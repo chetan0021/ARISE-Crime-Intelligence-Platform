@@ -1,0 +1,5 @@
+{
+  "name": "get_crime_analytics",
+  "type": "advancedio",
+  "env": "node18"
+}

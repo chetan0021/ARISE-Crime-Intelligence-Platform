@@ -1,0 +1,5 @@
+{
+  "name": "arise_chatbot_handler",
+  "type": "integration",
+  "env": "node18"
+}

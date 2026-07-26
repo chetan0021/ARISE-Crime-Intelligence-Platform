@@ -1,0 +1,6 @@
+{
+  "name": "alert_scheduler",
+  "type": "cron",
+  "handler": "index.js",
+  "runtime": "nodejs20"
+}

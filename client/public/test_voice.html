@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TTS Test Page</title>
+</head>
+<body>
+    <h2>Test Voice (Edge TTS)</h2>
+    <input type="text" id="text" value="Hello, this is a test of the Zia voice system." style="width: 300px;">
+    <select id="lang">
+        <option value="en">English</option>
+        <option value="kn">Kannada</option>
+    </select>
+    <button onclick="testVoice()">Speak</button>
+    <p id="status"></p>
+    <audio id="audio" controls autoplay></audio>
+
+    <script>
+        async function testVoice() {
+            const text = document.getElementById('text').value;
+            const lang = document.getElementById('lang').value;
+            const status = document.getElementById('status');
+            const audio = document.getElementById('audio');
+            
+            status.innerText = "Loading...";
+            try {
+                // Testing against the local server (3001) or Catalyst
+                // Update this URL if testing against Catalyst directly
+                const res = await fetch('http://localhost:3001/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, language: lang })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+                }
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                audio.src = url;
+                status.innerText = "Playing...";
+                
+                audio.onended = () => { status.innerText = "Done."; };
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Error: " + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

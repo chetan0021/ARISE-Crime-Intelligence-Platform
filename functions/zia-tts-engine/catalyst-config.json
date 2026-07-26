@@ -1,0 +1,14 @@
+{
+  "functions": [
+    {
+      "name": "zia-tts-engine",
+      "description": "Streams GLM-generated response text back as MP3 audio using edge-tts, supporting English (Indian) and Kannada voices.",
+      "type": "advancedio",
+      "runtime": "nodejs18-advancedio",
+      "memory": 256,
+      "timeout": 60,
+      "execution_env": "production",
+      "roles": []
+    }
+  ]
+}

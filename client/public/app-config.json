@@ -1,0 +1,8 @@
+{
+  "routing": [
+    {
+      "redirect": "/index.html",
+      "path": "/*"
+    }
+  ]
+}
