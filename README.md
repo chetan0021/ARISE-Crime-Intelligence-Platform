@@ -1,6 +1,6 @@
 # ARISE - Crime Intelligence Platform
 
-**Built for Karnataka State Police Datathon 2026 — Challenge 1 & Challenge 2**
+**Built for Karnataka State Police Datathon 2026 — Challenge 2**
 
 ARISE is a comprehensive, AI-driven crime intelligence platform that bridges the gap between raw policing data and actionable, real-time insights, powered by an advanced conversational voice assistant and sophisticated spatial-temporal analytics.
 
@@ -8,7 +8,6 @@ ARISE is a comprehensive, AI-driven crime intelligence platform that bridges the
 
 ## Problem Statement Summary
 
-- **Challenge 1 (Intelligent Conversational AI):** KSP requires a voice-enabled AI assistant capable of understanding natural language queries (in English and Kannada), retrieving real-time intelligence from crime databases, and providing concise, context-aware briefings without hallucinations or unauthorized data exposure.
 - **Challenge 2 (AI-Driven Crime Analytics & Visualization):** KSP needs advanced analytics and visualization tools to detect emerging crime hotspots, track repeat offenders, map criminal networks across jurisdictions, and correlate crime patterns with socio-demographic factors to enable proactive policing and resource allocation.
 
 ---
@@ -132,5 +131,5 @@ Administrative oversight and compliance tracking.
 
 ## Team / Credits
 
-**Team:** Datathon Participants
+**Team:** Cognitive Cops
 **Event:** Karnataka State Police Datathon 2026
