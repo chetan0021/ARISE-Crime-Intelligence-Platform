@@ -44,7 +44,7 @@ const ZiaTest = () => {
 
   useEffect(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.lang = lang === 'kan' ? 'kn-IN' : 'en-IN';
+      recognitionRef.current.lang = lang === 'kn' ? 'kn-IN' : 'en-IN';
     }
   }, [lang]);
 
@@ -80,7 +80,7 @@ const ZiaTest = () => {
       const res = await fetch(`${API_BASE}/api/chatbot/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ message: queryText, history: [], language: lang === 'kan' ? 'kn' : 'en' })
+        body: JSON.stringify({ message: queryText, history: chatLog.map(c => ({role: c.role, content: c.content})).slice(-6), language: lang === 'kn' ? 'kn' : 'en' })
       });
       const data = await res.json();
 
@@ -99,7 +99,7 @@ const ZiaTest = () => {
       const ttsRes = await fetch(`http://localhost:3001/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kan' ? 'kn' : 'en' })
+        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kn' ? 'kn' : 'en' })
       });
 
       if (ttsRes.ok) {

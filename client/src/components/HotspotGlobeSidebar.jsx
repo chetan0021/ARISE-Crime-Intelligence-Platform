@@ -270,13 +270,15 @@ export default function HotspotGlobeSidebar({
 
       {/* ── CTA footer ── */}
       <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{
+        <div 
+          onClick={() => onTogglePanel?.('mappin')}
+          style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           padding: '10px 16px',
           background: 'linear-gradient(135deg, rgba(0,80,200,0.32) 0%, rgba(0,229,255,0.18) 100%)',
           border: '1px solid rgba(0,229,255,0.32)',
           borderRadius: 7,
-          color: '#00e5ff', fontSize: 12, fontWeight: 600, cursor: 'default'
+          color: '#00e5ff', fontSize: 12, fontWeight: 600, cursor: 'pointer'
         }}>
           {t?.('hm.deployRec') || 'Open Simulation Parameters →'}
           <ChevronRight size={14} />

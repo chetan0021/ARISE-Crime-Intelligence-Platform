@@ -16,6 +16,7 @@ export default function ZiaOrb({ variant = 'default' }) {
   const [isThinking, setIsThinking] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [transcriptText, setTranscriptText] = useState('');
+  const [history, setHistory] = useState([]);
 
   const recognitionRef = useRef(null);
   const audioRef = useRef(null);
@@ -63,7 +64,7 @@ export default function ZiaOrb({ variant = 'default' }) {
 
   useEffect(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.lang = lang === 'kan' ? 'kn-IN' : 'en-IN';
+      recognitionRef.current.lang = lang === 'kn' ? 'kn-IN' : 'en-IN';
     }
   }, [lang]);
 
@@ -105,21 +106,21 @@ export default function ZiaOrb({ variant = 'default' }) {
     
     if (isNavIntent) {
       if (q.includes('hotspot') || q.includes('map') || q.includes('ನಕ್ಷೆ') || q.includes('ಹಾಟ್')) {
-        navigate('/dashboard/hotspots');
+        navigate('/dashboard/hotspots'); return;
       } else if (q.includes('analytic') || q.includes('graph') || q.includes('ವಿಶ್ಲೇಷಣೆ')) {
-        navigate('/dashboard/analytics');
+        navigate('/dashboard/analytics'); return;
       } else if (q.includes('network') || q.includes('link') || q.includes('ನೆಟ್ವರ್ಕ್')) {
-        navigate('/dashboard/network');
+        navigate('/dashboard/network'); return;
       } else if (q.includes('offender') || q.includes('criminal') || q.includes('ಅಪರಾಧಿ')) {
-        navigate('/dashboard/offenders');
+        navigate('/dashboard/offenders'); return;
       } else if (q.includes('predict') || q.includes('ಭವಿಷ್ಯ')) {
-        navigate('/dashboard/predictions');
+        navigate('/dashboard/predictions'); return;
       } else if (q.includes('socio') || q.includes('economic') || q.includes('ಆರ್ಥಿಕ')) {
-        navigate('/dashboard/socioeconomic');
+        navigate('/dashboard/socioeconomic'); return;
       } else if (q.includes('financ') || q.includes('ಹಣಕಾಸು')) {
-        navigate('/dashboard/financial');
+        navigate('/dashboard/financial'); return;
       } else if (q.includes('search') || q.includes('ಹುಡುಕು')) {
-        navigate('/dashboard/search');
+        navigate('/dashboard/search'); return;
       }
     }
 
@@ -133,8 +134,8 @@ export default function ZiaOrb({ variant = 'default' }) {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ 
           message: queryText, 
-          history: [], 
-          language: lang === 'kan' ? 'kn' : 'en',
+          history: history, 
+          language: lang === 'kn' ? 'kn' : 'en',
           pageContext: location.pathname
         })
       });
@@ -144,6 +145,7 @@ export default function ZiaOrb({ variant = 'default' }) {
       }
       const replyText = data.data?.response || data.reply || "I'm sorry, I couldn't process that.";
       
+      setHistory(prev => [...prev.slice(-4), {role: 'user', content: queryText}, {role: 'assistant', content: replyText}]);
       setIsThinking(false);
 
       // 2. Clean text for TTS
@@ -158,7 +160,7 @@ export default function ZiaOrb({ variant = 'default' }) {
       const ttsRes = await fetch(`${API_BASE}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kan' ? 'kn' : 'en' })
+        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kn' ? 'kn' : 'en' })
       });
 
       if (ttsRes.ok) {
@@ -204,11 +206,11 @@ export default function ZiaOrb({ variant = 'default' }) {
   // Mini variant styling overrides
   const containerStyle = isMini ? {
     position: 'fixed',
-    bottom: '24px',
+    bottom: '100px',
     right: '24px',
-    transform: 'scale(0.5)',
+    transform: 'scale(0.35)',
     transformOrigin: 'bottom right',
-    zIndex: 9999
+    zIndex: 10000
   } : {};
 
   return (
@@ -217,7 +219,7 @@ export default function ZiaOrb({ variant = 'default' }) {
         <div className={`zia-led-ring ${getRingClass()}`}></div>
         <div className="zia-knob" title="Click to speak to Zia">
           <div className="zia-knob-texture"></div>
-          <Mic size={40} className={isListening ? 'text-red-500' : isThinking ? 'text-amber-500' : isPlaying ? 'text-emerald-500' : 'text-gray-400'} style={{ zIndex: 20 }} />
+          <Mic size={40} className={isListening ? 'text-red-500' : isThinking ? 'text-amber-500' : isPlaying ? 'text-emerald-500' : 'text-slate-800'} style={{ zIndex: 20, filter: isListening ? 'none' : 'drop-shadow(0 1px 1px rgba(255, 255, 255, 0.7))' }} />
         </div>
         <audio ref={audioRef} className="hidden" />
       </div>

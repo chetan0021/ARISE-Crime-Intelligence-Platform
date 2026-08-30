@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -79,20 +79,20 @@ function normalizeDistrictName(rawName) {
 }
 
 const THEME = {
-  glassBg:       'rgba(9, 9, 11, 0.82)',
-  glassBorder:   'rgba(255, 255, 255, 0.08)',
-  accent:        '#fafafa',
-  red:           '#ef4444',
-  orange:        '#fafafa',
-  yellow:        '#eab308',
-  green:         '#22c55e',
-  blue:          '#38bdf8',
-  violet:        '#a78bfa',
-  textPrimary:   '#fafafa',
-  textSecondary: '#a1a1aa',
-  textMuted:     '#71717a',
-  textSubtle:    '#52525b',
-  chartBg:       'rgba(24, 24, 27, 0.6)',
+  glassBg:       'rgba(28, 24, 30, 0.45)',
+  glassBorder:   'rgba(255, 255, 255, 0.05)',
+  accent:        '#5EF7A6',
+  red:           '#f43f5e',
+  orange:        '#f59e0b',
+  yellow:        '#5EF7A6',
+  green:         '#5EF7A6',
+  blue:          '#54A388',
+  violet:        '#43256E',
+  textPrimary:   '#f1f5f9',
+  textSecondary: '#94a3b8',
+  textMuted:     '#64748b',
+  textSubtle:    '#475569',
+  chartBg:       'rgba(35, 30, 38, 0.75)',
 };
 
 const glassStyle = {
@@ -107,10 +107,10 @@ const glassStyle = {
 const appFont = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 function getVulnerabilityColor(score) {
-  if (score >= 0.7) return "#ff0055";
-  if (score >= 0.5) return "#fb923c";
-  if (score >= 0.3) return "#facc15";
-  return "#00ffaa";
+  if (score >= 0.7) return "#f43f5e";
+  if (score >= 0.5) return "#f59e0b";
+  if (score >= 0.3) return "#54A388";
+  return "#5EF7A6";
 }
 
 function KarnatakaChoroLayer({ correlationData, selectedDistrict, onDistrictClick }) {
@@ -167,7 +167,7 @@ function KarnatakaChoroLayer({ correlationData, selectedDistrict, onDistrictClic
               fillOpacity: isSelected
                 ? 0.85 : 0.65,
               color: isSelected
-                ? '#ffffff' : '#0f172a',
+                ? '#5EF7A6' : '#231e26',
               weight: isSelected ? 2.5 : 1
             };
           },
@@ -444,7 +444,7 @@ export default function SocioEconomic() {
         { axis: "Migration", value: 82, benchmark: 50 },
         { axis: "Substance Abuse", value: 65, benchmark: 40 }
       ],
-      aiInsight: "High composite stress detected in Bengaluru Urban driven by extreme migration density, income inequality, and digital payment fraud clusters. R² correlation 0.87 between economic stress vectors and recorded offences.",
+      aiInsight: "High composite stress detected in Bengaluru Urban driven by extreme migration density, income inequality, and digital payment fraud clusters. RÂ² correlation 0.87 between economic stress vectors and recorded offences.",
       unemploymentProxy: 9.2,
       crimeRatePer100k: 187,
       migrationIndex: 87,
@@ -459,11 +459,11 @@ export default function SocioEconomic() {
         <MapContainer
           center={[15.0, 76.3]}
           zoom={7}
-          style={{ height: '100%', width: '100%', background: 'var(--bg-base)' }}
+          style={{ height: '100%', width: '100%', background: 'transparent' }}
           zoomControl={false}
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap &copy; CARTO"
           />
 
@@ -489,15 +489,15 @@ export default function SocioEconomic() {
             {t('se.vulnScale') || 'Vulnerability Scale'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "var(--green)" }} /> Low
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#facc15", marginLeft: '8px' }} /> Moderate
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#fb923c", marginLeft: '8px' }} /> High
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "var(--red)", marginLeft: '8px' }} /> Severe
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#5EF7A6" }} /> Low
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#54A388", marginLeft: '8px' }} /> Moderate
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#f59e0b", marginLeft: '8px' }} /> High
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: "#f43f5e", marginLeft: '8px' }} /> Severe
           </div>
         </div>
       </div>
 
-      <div style={{ width: '450px', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-default)', background: 'var(--bg-page)', zIndex: 10, boxShadow: '-8px 0 32px rgba(0,0,0,0.5)' }}>
+      <div style={{ width: '450px', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-default)', background: 'transparent', zIndex: 10, boxShadow: '-8px 0 32px rgba(0,0,0,0.5)' }}>
         {defaultSelected ? (
           <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -556,19 +556,19 @@ export default function SocioEconomic() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
               <div className="arise-card" style={{ padding: '12px 16px' }}>
                 <div style={{ fontSize: '11px', color: "var(--text-muted)", textTransform: 'uppercase', fontWeight: 600 }}>Unemployment Rate</div>
-                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--text-primary)", marginTop: '4px' }}>{defaultSelected.unemploymentProxy != null ? `${defaultSelected.unemploymentProxy}%` : '—'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--text-primary)", marginTop: '4px' }}>{defaultSelected.unemploymentProxy != null ? `${defaultSelected.unemploymentProxy}%` : 'â€”'}</div>
               </div>
               <div className="arise-card" style={{ padding: '12px 16px' }}>
                 <div style={{ fontSize: '11px', color: "var(--text-muted)", textTransform: 'uppercase', fontWeight: 600 }}>Crime Rate (per 100k)</div>
-                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--red)", marginTop: '4px' }}>{defaultSelected.crimeRatePer100k != null ? defaultSelected.crimeRatePer100k : '—'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--red)", marginTop: '4px' }}>{defaultSelected.crimeRatePer100k != null ? defaultSelected.crimeRatePer100k : 'â€”'}</div>
               </div>
               <div className="arise-card" style={{ padding: '12px 16px' }}>
                 <div style={{ fontSize: '11px', color: "var(--text-muted)", textTransform: 'uppercase', fontWeight: 600 }}>Migration Index</div>
-                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--text-primary)", marginTop: '4px' }}>{defaultSelected.migrationIndex != null ? `${defaultSelected.migrationIndex}/100` : '—'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: "var(--text-primary)", marginTop: '4px' }}>{defaultSelected.migrationIndex != null ? `${defaultSelected.migrationIndex}/100` : 'â€”'}</div>
               </div>
               <div className="arise-card" style={{ padding: '12px 16px' }}>
                 <div style={{ fontSize: '11px', color: "var(--text-muted)", textTransform: 'uppercase', fontWeight: 600 }}>Economic Stress</div>
-                <div style={{ fontSize: '18px', fontWeight: 600, color: "#fb923c", marginTop: '4px' }}>{defaultSelected.economicStressIndex != null ? `${defaultSelected.economicStressIndex}/100` : '—'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: "#f59e0b", marginTop: '4px' }}>{defaultSelected.economicStressIndex != null ? `${defaultSelected.economicStressIndex}/100` : '-'}</div>
               </div>
             </div>
 
@@ -603,3 +603,4 @@ export default function SocioEconomic() {
     </div>
   );
 }
+

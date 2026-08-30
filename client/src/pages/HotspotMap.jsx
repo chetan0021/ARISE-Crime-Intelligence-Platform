@@ -447,6 +447,46 @@ function Toast({ message, onDismiss }) {
 
 // ── MAIN COMPONENT ────────────────────────────────────────
 
+
+const KARNATAKA_GEOJSON_URL = 'https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@ef25ebc/geojson/states/karnataka.geojson';
+
+function KarnatakaBoundaryLayer() {
+  const map = useMap();
+  const layerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!map) return;
+    if (layerRef.current) {
+      map.removeLayer(layerRef.current);
+    }
+
+    fetch(KARNATAKA_GEOJSON_URL)
+      .then(r => r.json())
+      .then(geojson => {
+        const geoLayer = L.geoJSON(geojson, {
+          style: {
+            color: '#5EF7A6',
+            weight: 2,
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            dashArray: '3, 6'
+          }
+        });
+        geoLayer.addTo(map);
+        layerRef.current = geoLayer;
+      })
+      .catch(e => console.error('Failed to load Karnataka geojson:', e));
+
+    return () => {
+      if (layerRef.current && map) {
+        map.removeLayer(layerRef.current);
+      }
+    };
+  }, [map]);
+
+  return null;
+}
+
 export default function HotspotMap() {
   const t = useT()
   const { lang } = useLang()
@@ -493,9 +533,9 @@ export default function HotspotMap() {
   //   BOTTOM CENTER:                      Time Slider (under everything, at very bottom of viewport)
   const riskPanel    = useDraggablePanel({ x: 12, y: 72 })
   const aiPanel      = useDraggablePanel({ x: 12, y: window.innerHeight - 340 })
-  const legendPanel  = useDraggablePanel({ x: window.innerWidth - 340, y: window.innerHeight - 220 })
+  const legendPanel  = useDraggablePanel({ x: window.innerWidth > 1000 ? window.innerWidth - 640 : 20, y: window.innerHeight - 220 })
   const sliderPanel  = useDraggablePanel({ x: Math.max(12, (window.innerWidth - 620) / 2), y: window.innerHeight - 90 })
-  const dispatchPanel = useDraggablePanel({ x: window.innerWidth - 340, y: 72 })
+  const dispatchPanel = useDraggablePanel({ x: window.innerWidth > 1000 ? window.innerWidth - 640 : 20, y: 72 })
 
   const appFont = lang === 'kn' ? "'Noto Sans Kannada', sans-serif" : 'Inter, sans-serif'
   const glassStyle = {
@@ -806,6 +846,13 @@ export default function HotspotMap() {
 
         {/* View mode toggle */}
         <div style={{ ...glassStyle, position: 'absolute', top: '20px', left: '12px', zIndex: 1001, padding: '4px', display: 'flex', gap: '2px' }}>
+          <style>{`
+            @keyframes pulse-attention {
+              0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); background-color: rgba(0, 229, 255, 0.1); }
+              70% { box-shadow: 0 0 0 10px rgba(0, 229, 255, 0); background-color: transparent; }
+              100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); background-color: transparent; }
+            }
+          `}</style>
           <button onClick={() => setViewMode('3d')} style={{
             display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
             borderRadius: '8px', border: 'none', cursor: 'pointer',
@@ -820,7 +867,8 @@ export default function HotspotMap() {
             borderRadius: '8px', border: 'none', cursor: 'pointer',
             background: viewMode === '2d' ? 'rgba(0,229,255,0.15)' : 'transparent',
             color: viewMode === '2d' ? 'var(--cyan)' : 'var(--text-muted)',
-            fontSize: '11px', fontWeight: 600, fontFamily: appFont
+            fontSize: '11px', fontWeight: 600, fontFamily: appFont,
+            animation: viewMode === '3d' ? 'pulse-attention 2s infinite' : 'none'
           }}>
             <Map size={14} /> 2D Map
           </button>
@@ -901,7 +949,7 @@ export default function HotspotMap() {
             `}</style>
             <LayersControl position="bottomleft">
               <LayersControl.BaseLayer checked name="Dark Mode">
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="Satellite">
@@ -909,7 +957,7 @@ export default function HotspotMap() {
                   attribution="&copy; Google Maps" />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="Light Mode">
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; CARTO' />
               </LayersControl.BaseLayer>
             </LayersControl>

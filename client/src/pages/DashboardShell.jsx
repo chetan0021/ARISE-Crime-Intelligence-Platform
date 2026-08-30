@@ -9,6 +9,7 @@ import { useT } from '../i18n/useT';
 import { useLang } from '../context/LanguageContext';
 import { useRole } from '../context/RoleContext';
 import ZiaOrb from '../components/ZiaOrb';
+import GlobalBot from '../components/GlobalBot';
 
 export default function DashboardShell() {
   const [expanded, setExpanded] = useState(true);
@@ -298,7 +299,7 @@ export default function DashboardShell() {
         {/* ── HEADER BAR ───────────────────── */}
         <header style={{
           height: '56px',
-          background: 'rgba(9, 9, 11, 0.95)',
+          background: 'rgba(22, 19, 22, 0.4)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -308,6 +309,8 @@ export default function DashboardShell() {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexShrink: 0,
+          position: 'relative',
+          zIndex: 50,
         }}>
 
           {/* Left — Page title */}
@@ -446,18 +449,20 @@ export default function DashboardShell() {
           className="arise-page-enter"
           style={{
             flex: 1,
-            background: 'var(--bg-page)',
-            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'transparent',
+            padding: ['/dashboard/hotspots', '/dashboard/network', '/dashboard/offenders', '/dashboard/socioeconomic', '/dashboard/financial', '/dashboard/search', '/dashboard/assistant', '/dashboard/reports', '/dashboard/face-analytics'].some(route => location.pathname.startsWith(route)) ? '0' : '24px',
             overflowY: 'auto',
+            overflowX: 'hidden'
           }}
         >
           <Outlet />
         </div>
         
-        {location.pathname !== '/dashboard' && location.pathname !== '/dashboard/' && (
-          <ZiaOrb variant="mini" />
-        )}
       </main>
+
+      <GlobalBot />
     </div>
   );
 }

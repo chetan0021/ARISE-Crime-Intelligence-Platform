@@ -1,0 +1,14 @@
+{
+  "client": {
+    "source": "client/dist"
+  },
+  "functions": {
+    "targets": [
+      "get_crime_analytics",
+      "arise_chatbot_handler",
+      "alert_scheduler"
+    ],
+    "ignore": [],
+    "source": "functions"
+  }
+}

@@ -9,7 +9,7 @@ import ReactMarkdown from 'react-markdown'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics'
 
-/* ── BNS LABELS ──────────────────────────────────── */
+/* â”€â”€ BNS LABELS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const BNS_LABELS = {
   'BNS-303': 'Theft',
   'BNS-309(4)': 'Robbery',
@@ -51,13 +51,13 @@ const PROMPT_CHIPS = [
   }
 ]
 
-/* ── INLINE STYLES ───────────────────────────────── */
+/* â”€â”€ INLINE STYLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const S = {
   page: {
     display: 'flex',
     height: '100%',
     fontFamily: "var(--font-sans)",
-    background: 'var(--bg-base)',
+    background: 'transparent',
     color: 'var(--text-primary)',
     overflow: 'hidden'
   },
@@ -83,7 +83,7 @@ const S = {
     flexDirection: 'column',
     gap: '8px',
     position: 'absolute',
-    bottom: '24px',
+    bottom: '4px',
     left: '50%',
     transform: 'translateX(-50%)',
     width: '600px',
@@ -127,7 +127,7 @@ const S = {
   }),
 rightPanel: {
     width: '360px',
-    background: 'var(--bg-page)',
+    background: 'transparent',
     borderLeft: '1px solid var(--border-active)',
     display: 'flex',
     flexDirection: 'column',
@@ -138,7 +138,7 @@ rightPanel: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'var(--bg-page)',
+    background: 'transparent',
     padding: '14px 16px',
     borderBottom: '1px solid var(--border-default)',
     zIndex: 10
@@ -198,7 +198,7 @@ rightPanel: {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-    background: 'var(--bg-base)'
+    background: 'transparent'
   },
   msgUserRow: {
     display: 'flex',
@@ -298,7 +298,7 @@ rightPanel: {
     padding: 0
   },
   citesList: {
-    background: 'var(--bg-page)',
+    background: 'transparent',
     borderRadius: '6px',
     border: '1px solid var(--border-active)',
     padding: '8px 10px',
@@ -342,12 +342,11 @@ rightPanel: {
   },
   promptPillsRow: {
     display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: '8px',
-    overflowX: 'auto',
-    padding: '10px 16px',
-    background: 'var(--bg-page)',
-    borderTop: '1px solid var(--border-default)',
-    scrollBehavior: 'smooth'
+    padding: '4px 0',
+    width: '100%',
   },
   promptPill: {
     display: 'inline-flex',
@@ -411,7 +410,7 @@ rightPanel: {
     justifyContent: 'space-between',
     padding: '14px 16px',
     borderBottom: '1px solid var(--border-active)',
-    background: 'var(--bg-page)'
+    background: 'transparent'
   },
   convokraftTitleRow: {
     display: 'flex',
@@ -422,7 +421,7 @@ rightPanel: {
     flex: 1,
     height: '100%',
     minHeight: '400px',
-    background: 'var(--bg-base)',
+    background: 'transparent',
     position: 'relative'
   },
   convokraftFooter: {
@@ -430,7 +429,7 @@ rightPanel: {
     fontSize: '10px',
     color: 'var(--text-muted)',
     borderTop: '1px solid var(--border-active)',
-    background: 'var(--bg-page)',
+    background: 'transparent',
     textAlign: 'center'
   },
   guidePanel: {
@@ -466,7 +465,7 @@ rightPanel: {
   }
 }
 
-/* ── ANIMATION STYLE TAG (for pulsing dots and mic pulse) ── */
+/* â”€â”€ ANIMATION STYLE TAG (for pulsing dots and mic pulse) â”€â”€ */
 if (typeof document !== 'undefined' && !document.getElementById('ai-pulse-style')) {
   const style = document.createElement('style')
   style.id = 'ai-pulse-style'
@@ -568,7 +567,7 @@ export default function AIAssistant() {
         body: JSON.stringify({
           message: text,
           language: lang,
-          conversationHistory: history
+          history: history
         })
       })
 
@@ -685,7 +684,7 @@ export default function AIAssistant() {
 
   return (
     <div className="arise-page-enter" style={S.page}>
-      {/* ── LEFT PANEL (CHAT) ──────────────────── */}
+      {/* â”€â”€ LEFT PANEL (CHAT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div style={{...S.leftPanel, position: 'relative'}}>
         {/* Background Ambient Glows */}
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,119,255,0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
@@ -694,13 +693,13 @@ export default function AIAssistant() {
         <div style={{...S.header, background: 'transparent', borderBottom: 'none', zIndex: 10}}>
           <div style={S.headerLeft}>
             <Bot color="var(--amber)" size={18} />
-            <span style={S.title}>Jarvis <span style={{color: 'var(--text-muted)'}}>· Intelligence Agent</span></span>
+            <span style={S.title}>ARISE <span style={{color: 'var(--text-muted)'}}>· Intelligence Agent</span></span>
           </div>
           <div style={S.headerRight}>
             <button style={S.ghostBtn} title={t('ai.clearChat')} onClick={resetChat}>
               <RotateCcw size={18} />
             </button>
-            <span style={S.langBadge}>{lang === 'kn' ? 'ಕನ್ನಡ' : 'EN'}</span>
+            <span style={S.langBadge}>{lang === 'kn' ? 'à²•à²¨à³à²¨à²¡' : 'EN'}</span>
           </div>
         </div>
 
@@ -832,29 +831,31 @@ export default function AIAssistant() {
               </div>
             )
           })}
+          {/* Spacer to guarantee scroll clearance for the absolute positioned input bar */}
+          <div style={{ height: '220px', flexShrink: 0 }} />
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Prompt Chips (Only show if we have messages) */}
-        {messages.length > 0 && (
-          <div style={S.promptPillsRow}>
-            {PROMPT_CHIPS.map((chip, idx) => (
-              <button
-                key={idx}
-                style={S.promptPill}
-                className="ai-pill"
-                disabled={sending}
-                onClick={() => sendMessage(chip.query)}
-              >
-                <span>{chip.icon}</span>
-                <span>{chip.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Input Bar */}
         <div style={S.inputBar}>
+          {/* Prompt Chips */}
+          {messages.length > 0 && (
+            <div style={S.promptPillsRow} className="hide-scroll">
+              {PROMPT_CHIPS.map((chip, idx) => (
+                <button
+                  key={idx}
+                  style={S.promptPill}
+                  className="ai-pill"
+                  disabled={sending}
+                  onClick={() => sendMessage(chip.query)}
+                >
+                  <span>{chip.icon}</span>
+                  <span>{chip.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={S.inputRow}>
             <button
               style={S.voiceBtn(isListening)}
@@ -895,7 +896,7 @@ export default function AIAssistant() {
                 style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => setError(null)}
               >
-                ×
+                Ã—
               </button>
             </div>
           )}
@@ -904,3 +905,4 @@ export default function AIAssistant() {
     </div>
   )
 }
+

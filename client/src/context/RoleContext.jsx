@@ -6,19 +6,19 @@ export const ROLES = {
     id: 'INVESTIGATOR',
     label: 'Investigator',
     description: 'Full case details + own cases. Limited access to systemic analytics.',
-    allowedNav: ['/dashboard', '/dashboard/hotspots', '/dashboard/search', '/dashboard/network', '/dashboard/settings']
+    allowedNav: ['/dashboard', '/dashboard/hotspots', '/dashboard/search', '/dashboard/network', '/dashboard/face-analytics', '/dashboard/settings']
   },
   ANALYST: {
     id: 'ANALYST',
     label: 'Analyst',
     description: 'Analytics, patterns, anomalies. Limited PII access.',
-    allowedNav: ['/dashboard', '/dashboard/analytics', '/dashboard/predictions', '/dashboard/financial', '/dashboard/socioeconomic', '/dashboard/search', '/dashboard/settings']
+    allowedNav: ['/dashboard', '/dashboard/analytics', '/dashboard/predictions', '/dashboard/financial', '/dashboard/socioeconomic', '/dashboard/search', '/dashboard/face-analytics', '/dashboard/settings']
   },
   SUPERVISOR: {
     id: 'SUPERVISOR',
     label: 'Supervisor',
     description: 'Full access to all cases, analytics, and governance/audit logs.',
-    allowedNav: ['/dashboard', '/dashboard/analytics', '/dashboard/hotspots', '/dashboard/network', '/dashboard/offenders', '/dashboard/predictions', '/dashboard/financial', '/dashboard/socioeconomic', '/dashboard/search', '/dashboard/governance', '/dashboard/settings', '/dashboard/assistant', '/dashboard/reports']
+    allowedNav: ['/dashboard', '/dashboard/analytics', '/dashboard/hotspots', '/dashboard/network', '/dashboard/offenders', '/dashboard/predictions', '/dashboard/financial', '/dashboard/socioeconomic', '/dashboard/search', '/dashboard/face-analytics', '/dashboard/governance', '/dashboard/settings', '/dashboard/assistant', '/dashboard/reports']
   },
   POLICYMAKER: {
     id: 'POLICYMAKER',

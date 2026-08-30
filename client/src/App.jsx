@@ -15,6 +15,7 @@ import Settings from './pages/Settings';
 import SocioEconomic from './pages/SocioEconomic';
 import AIAssistant from './pages/AIAssistant';
 import Governance from './pages/Governance';
+import ZiaFaceAnalytics from './pages/ZiaFaceAnalytics';
 import ZiaTest from './pages/ZiaTest';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="governance" element={<Governance />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="face-analytics" element={<ZiaFaceAnalytics />} />
           <Route path="zia-test" element={<ZiaTest />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,0 +1,137 @@
+app.get('/api/predict/early-warning', async (req, res) => {
+  try {
+    const zcql = res.locals.catalystApp.zcql();
+
+    const [q1, q2, q3, q4] = await Promise.all([
+      zcql.executeZCQLQuery(`SELECT offender_profile.offender_uid, offender_profile.full_name, offender_profile.alias_names, offender_profile.recidivism_risk_score, offender_profile.gang_affiliation_text, offender_profile.is_rowdy_sheeter, bail_custody_status.current_status, bail_custody_status.bail_expiry_datetime, bail_custody_status.court_name FROM offender_profile, bail_custody_status WHERE offender_profile.offender_uid = bail_custody_status.offender_uid AND bail_custody_status.current_status = 'BAIL'`).catch(()=>[]),
+      zcql.executeZCQLQuery(`SELECT geospatial_hotspot_indicator.cell_uid, geospatial_hotspot_indicator.district_name, geospatial_hotspot_indicator.police_station_code, geospatial_hotspot_indicator.risk_tier, geospatial_hotspot_indicator.composite_risk_score, geospatial_hotspot_indicator.dominant_crime_type, geospatial_hotspot_indicator.crime_count_last_7d, geospatial_hotspot_indicator.crime_count_last_30d, geospatial_hotspot_indicator.predicted_peak_hour_start, geospatial_hotspot_indicator.predicted_peak_hour_end FROM geospatial_hotspot_indicator WHERE geospatial_hotspot_indicator.risk_tier = 'RED' ORDER BY geospatial_hotspot_indicator.composite_risk_score DESC`).catch(()=>[]),
+      zcql.executeZCQLQuery(`SELECT fir_master.fir_uid, fir_master.district_name, fir_master.bns_primary_section, fir_master.fir_registration_datetime, fir_master.io_name, fir_master.case_status, fir_master.bnss_deadline_breached FROM fir_master WHERE fir_master.bnss_deadline_breached = true AND fir_master.case_status = 'Open'`).catch(()=>[]),
+      zcql.executeZCQLQuery(`SELECT geospatial_hotspot_indicator.cell_uid, geospatial_hotspot_indicator.district_name, geospatial_hotspot_indicator.police_station_code, geospatial_hotspot_indicator.dominant_crime_type, geospatial_hotspot_indicator.crime_count_last_7d, geospatial_hotspot_indicator.crime_count_last_30d, geospatial_hotspot_indicator.cell_center_latitude, geospatial_hotspot_indicator.cell_center_longitude FROM geospatial_hotspot_indicator`).catch(()=>[])
+    ]);
+
+    // Format results to handle Catalyst row format
+    const bailOffenders = q1.map(r => ({ ...(r.offender_profile || {}), ...(r.bail_custody_status || {}) }));
+    const redCells = q2.map(r => r.geospatial_hotspot_indicator || r);
+    const bnssBreaches = q3.map(r => r.fir_master || r);
+    const allCells = q4.map(r => r.geospatial_hotspot_indicator || r);
+
+    const alerts = [];
+    const bailAlerts = [];
+    const redZoneAlerts = [];
+    const bnssAlerts = [];
+    const clusterAlerts = [];
+
+    bailOffenders.forEach(o => {
+      const score = parseFloat(o.recidivism_risk_score) || 0;
+      if (score >= 0.8) {
+        const alert = {
+          id: 'BAIL-' + o.offender_uid,
+          type: 'BAIL_HIGH_RISK',
+          severity: score >= 0.9 ? 'CRITICAL' : 'HIGH',
+          title: `High-risk offender on bail`,
+          message: `${o.full_name} (risk score: ${(score * 100).toFixed(0)}%) is currently on bail. ${o.is_rowdy_sheeter === true || o.is_rowdy_sheeter === 'true' ? 'Registered rowdy sheeter. ' : ''}Court: ${o.court_name || 'Unknown'}`,
+          entityId: o.offender_uid,
+          entityType: 'OFFENDER',
+          entityName: o.full_name,
+          riskScore: score,
+          actionRequired: 'Enhanced bail monitoring recommended',
+          actionLink: '/dashboard/offenders',
+          timestamp: new Date().toISOString(),
+          gang: o.gang_affiliation_text || null
+        };
+        alerts.push(alert);
+        bailAlerts.push(alert);
+      }
+    });
+
+    redCells.forEach(cell => {
+      const alert = {
+        id: 'ZONE-' + cell.cell_uid,
+        type: 'RED_ZONE_ACTIVE',
+        severity: 'HIGH',
+        title: `Active red zone — ${cell.police_station_code}`,
+        message: `${cell.district_name} zone classified RED. Dominant: ${cell.dominant_crime_type}. ${cell.crime_count_last_7d} incidents in last 7 days. Peak risk: ${cell.predicted_peak_hour_start}:00–${cell.predicted_peak_hour_end}:00 hrs.`,
+        entityId: cell.cell_uid,
+        entityType: 'ZONE',
+        entityName: cell.police_station_code,
+        actionRequired: `Deploy Hoysala units during ${cell.predicted_peak_hour_start}:00–${cell.predicted_peak_hour_end}:00`,
+        actionLink: '/dashboard/hotspots',
+        timestamp: new Date().toISOString()
+      };
+      alerts.push(alert);
+      redZoneAlerts.push(alert);
+    });
+
+    bnssBreaches.forEach(fir => {
+      const alert = {
+        id: 'BNSS-' + fir.fir_uid,
+        type: 'BNSS_DEADLINE_BREACH',
+        severity: 'MEDIUM',
+        title: `BNSS chargesheet deadline missed`,
+        message: `FIR ${fir.fir_uid} in ${fir.district_name} has exceeded the BNSS Section 193 deadline. IO: ${fir.io_name || 'Unknown'}. Section: ${fir.bns_primary_section}.`,
+        entityId: fir.fir_uid,
+        entityType: 'FIR',
+        entityName: fir.fir_uid,
+        actionRequired: 'Chargesheet must be filed immediately',
+        actionLink: '/dashboard/search',
+        timestamp: fir.fir_registration_datetime || new Date().toISOString()
+      };
+      alerts.push(alert);
+      bnssAlerts.push(alert);
+    });
+
+    allCells.forEach(cell => {
+      const count7d = parseInt(cell.crime_count_last_7d) || 0;
+      const count30d = parseInt(cell.crime_count_last_30d) || 0;
+      const emerging = count30d > 0 && count7d > (count30d / 4);
+      
+      if (emerging) {
+        const surgeRatio = count30d > 0 ? ((count7d / (count30d / 4)) * 100).toFixed(0) : 0;
+        const alert = {
+          id: 'EMERGE-' + cell.cell_uid,
+          type: 'EMERGING_CLUSTER',
+          severity: 'HIGH',
+          title: `Emerging crime cluster detected`,
+          message: `${cell.police_station_code} in ${cell.district_name} shows ${surgeRatio}% surge in ${cell.dominant_crime_type} activity over 7-day baseline.`,
+          entityId: cell.cell_uid,
+          entityType: 'ZONE',
+          entityName: cell.police_station_code,
+          actionRequired: 'Increase patrol frequency in zone',
+          actionLink: '/dashboard/hotspots',
+          timestamp: new Date().toISOString(),
+          lat: cell.cell_center_latitude,
+          lng: cell.cell_center_longitude
+        };
+        alerts.push(alert);
+        clusterAlerts.push(alert);
+      }
+    });
+
+    const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+    alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        alerts,
+        summary: {
+          total: alerts.length,
+          critical: alerts.filter(a => a.severity === 'CRITICAL').length,
+          high: alerts.filter(a => a.severity === 'HIGH').length,
+          medium: alerts.filter(a => a.severity === 'MEDIUM').length,
+          byType: {
+            bailHighRisk: bailAlerts.length,
+            redZones: redZoneAlerts.length,
+            bnssBreaches: bnssAlerts.length,
+            emergingClusters: clusterAlerts.length
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Early Warning Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ENDPOINT 10: GET /api/predict/risk-leaderboard

@@ -316,10 +316,10 @@ export default function OffenderIntelligence() {
   );
 
   return (
-    <div className="arise-page-enter" style={{ display: 'flex', height: '100%', width: '100%', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
+    <div className="arise-page-enter" style={{ display: 'flex', height: '100%', width: '100%', background: 'transparent', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
       
       {/* LEFT PANEL */}
-      <div style={{ flex: '0 0 420px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-default)', background: 'var(--bg-page)', zIndex: 10, boxShadow: '4px 0 24px rgba(0,0,0,0.5)' }}>
+      <div style={{ flex: '0 0 420px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-default)', background: 'transparent', zIndex: 10, boxShadow: '4px 0 24px rgba(0,0,0,0.5)' }}>
         
         {/* Header & Filters */}
         <div style={{ padding: 16, borderBottom: '1px solid var(--border-default)' }}>
@@ -505,7 +505,7 @@ export default function OffenderIntelligence() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', position: 'relative' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: 'transparent', position: 'relative' }}>
         {!selectedOffender ? (
           // DASHBOARD STATE
           <div style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>

@@ -8,7 +8,7 @@ export default function Settings() {
   const speedLabel = playbackRate < 0.9 ? 'Slow' : playbackRate < 1.1 ? 'Normal' : playbackRate < 1.4 ? 'Fast' : 'Very Fast';
 
   return (
-    <div className="arise-page-enter" style={{ height: '100%', padding: '24px', background: 'var(--bg-page)' }}>
+    <div className="arise-page-enter" style={{ height: '100%', padding: '24px', background: 'transparent' }}>
       <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#fff', marginBottom: '24px', letterSpacing: '-0.02em' }}>
         System Settings
       </h2>
@@ -40,7 +40,7 @@ export default function Settings() {
               style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--amber)' }}
             />
             <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '8px' }}>
-              Adjusts how quickly Zia speaks. 1.15x is recommended for natural conversation flow.
+              Adjusts how quickly Zia speaks. 1.0x is recommended for normal conversation flow.
             </p>
           </div>
 
@@ -77,15 +77,32 @@ export default function Settings() {
           Data Seeding & Webhooks
         </h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
-              The police department can use the following webhook to clear the existing ZCQL tables and seed them with fresh FIR and crime data. This ensures the dashboard always reflects the latest analytical data without manual data entry.
+              To ensure the ARISE dashboard reflects the latest analytical data without manual entry, police departments can integrate their existing CCTNS platforms using these secure webhooks. You must only push data to the recognized tables below to avoid backend rejection.
             </p>
+
+            <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Database size={16} className="text-amber-500" />
+              Supported CCTNS ZCQL Tables
+            </h4>
+            <div style={{ background: '#1e1e1e', borderRadius: '8px', padding: '16px', marginBottom: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+              {[
+                'CaseMaster', 'Accused', 'ComplainantDetails', 'Victim', 'Unit', 'District',
+                'ActSectionAssociation', 'ArrestSurrender', 'ChargesheetDetails',
+                'modus_operandi_signature', 'geospatial_hotspot_indicator',
+                'entity_association_graph', 'bail_custody_status', 'bsa_audit_trail'
+              ].map(table => (
+                <div key={table} style={{ color: '#00e5ff', fontSize: '13px', fontFamily: 'monospace', padding: '6px 10px', background: 'rgba(0, 229, 255, 0.1)', borderRadius: '4px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+                  {table}
+                </div>
+              ))}
+            </div>
             
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Clean & Seed Endpoint
+                Clean & Seed Endpoint (Full Wipe & Update)
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: '14px', color: 'var(--amber)', wordBreak: 'break-all' }}>
                 GET https://&lt;your-catalyst-domain&gt;/server/get_crime_analytics/api/webhook/clean-and-seed
@@ -94,46 +111,46 @@ export default function Settings() {
 
             <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Terminal size={16} className="text-amber-500" />
-              Example: Triggering via cURL
+              cURL: Automated Cron Integration
             </h4>
-            <div style={{ background: '#1e1e1e', borderRadius: '8px', padding: '16px', overflowX: 'auto', marginBottom: '24px' }}>
-              <pre style={{ margin: 0, color: '#d4d4d4', fontSize: '13px', fontFamily: 'monospace' }}>
+            <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', overflowX: 'auto', marginBottom: '24px' }}>
+              <pre style={{ margin: 0, color: '#38bdf8', fontSize: '13px', fontFamily: 'monospace' }}>
                 <code>
-{`# Execute the webhook to wipe and re-seed the database
+{`# Execute the webhook to wipe and re-seed the database nightly
 curl -X GET \\
   "https://<your-catalyst-domain>/server/get_crime_analytics/api/webhook/clean-and-seed" \\
-  -H "Accept: application/json"`}
+  -H "Accept: application/json" \\
+  -H "Authorization: Bearer <CCTNS_SECURE_TOKEN>"
+`}
                 </code>
               </pre>
             </div>
 
             <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Code size={16} className="text-amber-500" />
-              Example: Triggering via Node.js
+              Python: CCTNS Middleware Sync Script
             </h4>
-            <div style={{ background: '#1e1e1e', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}>
-              <pre style={{ margin: 0, color: '#d4d4d4', fontSize: '13px', fontFamily: 'monospace' }}>
+            <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}>
+              <pre style={{ margin: 0, color: '#a78bfa', fontSize: '13px', fontFamily: 'monospace' }}>
                 <code>
-{`const fetch = require('node-fetch');
+{`import requests
+import logging
 
-async function seedData() {
-  const webhookUrl = 'https://<your-catalyst-domain>/server/get_crime_analytics/api/webhook/clean-and-seed';
-  
-  try {
-    console.log('Initiating database seed...');
-    const response = await fetch(webhookUrl, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
+def sync_cctns_to_arise():
+    """Trigger ARISE backend to clear old data and pull fresh CCTNS data."""
+    webhook_url = "https://<your-catalyst-domain>/server/get_crime_analytics/api/webhook/clean-and-seed"
+    headers = {"Accept": "application/json", "Authorization": "Bearer <CCTNS_SECURE_TOKEN>"}
     
-    const result = await response.json();
-    console.log('Seed Response:', result);
-  } catch (error) {
-    console.error('Failed to trigger webhook:', error);
-  }
-}
+    logging.info("Initiating ARISE Database Sync...")
+    try:
+        response = requests.get(webhook_url, headers=headers)
+        response.raise_for_status()
+        logging.info(f"Sync Successful: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Sync Failed. Error: {e}")
 
-seedData();`}
+if __name__ == "__main__":
+    sync_cctns_to_arise()`}
                 </code>
               </pre>
             </div>
@@ -143,3 +160,4 @@ seedData();`}
     </div>
   );
 }
+

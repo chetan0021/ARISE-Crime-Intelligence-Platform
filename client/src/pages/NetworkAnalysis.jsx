@@ -263,7 +263,6 @@ export default function NetworkAnalysis() {
     if (!mount) return
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x000000)
     scene.fog = new THREE.FogExp2(0x000000, 0.000) // Transparent when zooming out
 
     const width = mount.clientWidth || 800
@@ -274,7 +273,7 @@ export default function NetworkAnalysis() {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.setSize(width, height)
-    renderer.setClearColor(0x000000, 1)
+    renderer.setClearColor(0x000000, 0)
     mount.appendChild(renderer.domElement)
 
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -755,8 +754,8 @@ export default function NetworkAnalysis() {
   }
 
   return (
-    <div className="arise-page-enter" style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden', background: 'radial-gradient(ellipse at 50% 30%, #0b1220 0%, #05070d 55%, #000000 100%)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', position: 'relative' }}>
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(34,211,238,0.06), transparent 40%), radial-gradient(circle at 80% 80%, rgba(167,139,250,0.05), transparent 40%)' }}></div>
+    <div className="arise-page-enter" style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden', background: 'transparent', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', position: 'relative' }}>
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}></div>
 
       <div style={{ flex: 1, position: 'relative' }}>
         <div style={{

@@ -6,7 +6,7 @@ export function ZiaProvider({ children }) {
   // Try to load from localStorage, default to 1.15 speed and 600ms delay
   const [playbackRate, setPlaybackRate] = useState(() => {
     const saved = localStorage.getItem('zia_speed');
-    return saved ? parseFloat(saved) : 1.15;
+    return saved ? parseFloat(saved) : 1.0;
   });
 
   const [speakDelay, setSpeakDelay] = useState(() => {

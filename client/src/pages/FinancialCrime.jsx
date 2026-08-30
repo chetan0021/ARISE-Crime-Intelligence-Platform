@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import {
   DollarSign, AlertTriangle, Shield, Network, Search,
   ChevronRight, X, Loader2, TrendingUp, Phone, CreditCard,
@@ -9,20 +9,20 @@ import { useLang } from '../context/LanguageContext'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
-/* ── TOKEN TYPE CONFIG ─────────────────────────────── */
+/* â”€â”€ TOKEN TYPE CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TOKEN_CONFIG = {
-  UPI_ID:        { icon: '₹',  color: 'var(--green)', label: 'UPI ID',        bgColor: 'var(--green-dim)' },
-  BANK_ACCOUNT:  { icon: '🏦', color: 'var(--blue)', label: 'Bank account',  bgColor: 'var(--blue-dim)' },
-  MOBILE:        { icon: '📱', color: 'var(--purple)', label: 'Mobile number', bgColor: 'var(--purple-dim)' },
-  PHONE:         { icon: '📱', color: 'var(--purple)', label: 'Phone number',  bgColor: 'var(--purple-dim)' },
-  CRYPTO_WALLET: { icon: '₿',  color: 'var(--text-primary)', label: 'Crypto wallet', bgColor: 'var(--amber-dim)' },
-  IMEI:          { icon: '📟', color: 'var(--text-muted)', label: 'IMEI',          bgColor: 'rgba(113,113,122,0.1)' },
+  UPI_ID:        { icon: 'â‚¹',  color: 'var(--green)', label: 'UPI ID',        bgColor: 'var(--green-dim)' },
+  BANK_ACCOUNT:  { icon: 'ðŸ¦', color: 'var(--blue)', label: 'Bank account',  bgColor: 'var(--blue-dim)' },
+  MOBILE:        { icon: 'ðŸ“±', color: 'var(--purple)', label: 'Mobile number', bgColor: 'var(--purple-dim)' },
+  PHONE:         { icon: 'ðŸ“±', color: 'var(--purple)', label: 'Phone number',  bgColor: 'var(--purple-dim)' },
+  CRYPTO_WALLET: { icon: 'â‚¿',  color: 'var(--text-primary)', label: 'Crypto wallet', bgColor: 'var(--amber-dim)' },
+  IMEI:          { icon: 'ðŸ“Ÿ', color: 'var(--text-muted)', label: 'IMEI',          bgColor: 'rgba(113,113,122,0.1)' },
   EMAIL:         { icon: '@',  color: 'var(--amber)', label: 'Email',         bgColor: 'var(--amber-dim)' }
 }
 const getTokenConfig = (type) =>
   TOKEN_CONFIG[type] || { icon: '?', color: 'var(--text-muted)', label: type || 'Unknown', bgColor: 'rgba(82,82,91,0.1)' }
 
-/* ── RISK LEVEL CONFIG ─────────────────────────────── */
+/* â”€â”€ RISK LEVEL CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const RISK_CONFIG = {
   CRITICAL: { color: 'var(--red)', bg: 'var(--red-dim)',  border: 'rgba(239,68,68,0.25)' },
   HIGH:     { color: 'var(--text-primary)', bg: 'var(--amber-dim)', border: 'rgba(245,158,11,0.25)' },
@@ -30,14 +30,14 @@ const RISK_CONFIG = {
   LOW:      { color: 'var(--text-muted)', bg: 'transparent',           border: 'var(--border-active)' }
 }
 
-/* ── FORMAT HELPERS ────────────────────────────────── */
+/* â”€â”€ FORMAT HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function formatINR(amount) {
-  if (!amount || isNaN(amount)) return '₹0'
+  if (!amount || isNaN(amount)) return 'â‚¹0'
   const n = parseFloat(amount)
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)} Cr`
-  if (n >= 100000)   return `₹${(n / 100000).toFixed(2)} L`
-  if (n >= 1000)     return `₹${(n / 1000).toFixed(1)}K`
-  return `₹${n.toLocaleString('en-IN')}`
+  if (n >= 10000000) return `â‚¹${(n / 10000000).toFixed(2)} Cr`
+  if (n >= 100000)   return `â‚¹${(n / 100000).toFixed(2)} L`
+  if (n >= 1000)     return `â‚¹${(n / 1000).toFixed(1)}K`
+  return `â‚¹${n.toLocaleString('en-IN')}`
 }
 
 function formatDate(dateStr) {
@@ -47,13 +47,13 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
-/* ── STYLES (inline) ───────────────────────────────── */
+/* â”€â”€ STYLES (inline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const S = {
-  page: { display: 'flex', height: '100%', fontFamily: "var(--font-sans)", background: 'var(--bg-base)', color: 'var(--text-primary)' },
+  page: { display: 'flex', height: '100%', fontFamily: "var(--font-sans)", background: 'transparent', color: 'var(--text-primary)' },
   leftPanel: { flex: '0 0 440px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-default)', height: '100%', overflow: 'hidden' },
   rightPanel: { flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' },
   rightScroll: { flex: 1, overflowY: 'auto', padding: '20px 24px' },
-  headerBar: { background: 'var(--bg-page)', padding: '16px', borderBottom: '1px solid var(--border-default)' },
+  headerBar: { background: 'transparent', padding: '16px', borderBottom: '1px solid var(--border-default)' },
   kpiGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' },
   kpiCard: { background: 'var(--bg-card)', borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border-active)' },
   kpiLabel: { fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' },
@@ -98,7 +98,7 @@ const S = {
     padding: '8px 16px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', borderBottom: active ? '2px solid var(--text-primary)' : '2px solid transparent',
     color: active ? 'var(--amber)' : 'var(--text-muted)', transition: 'all .15s', background: 'none', border: 'none', borderBottomStyle: 'solid'
   }),
-  tabBar: { display: 'flex', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-page)' },
+  tabBar: { display: 'flex', borderBottom: '1px solid var(--border-default)', background: 'transparent' },
   patternCard: (borderClr) => ({
     background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-active)', borderLeft: `3px solid ${borderClr}`, padding: '16px', marginBottom: '12px'
   }),
@@ -106,8 +106,8 @@ const S = {
   countBadge: (clr) => ({
     fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '10px', background: `${clr}18`, color: clr, marginLeft: '8px'
   }),
-  patternItem: { background: 'var(--bg-page)', borderRadius: '6px', border: '1px solid var(--border-default)', padding: '10px 12px', marginBottom: '6px' },
-  detailHeader: { padding: '20px 24px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-page)', position: 'relative' },
+  patternItem: { background: 'transparent', borderRadius: '6px', border: '1px solid var(--border-default)', padding: '10px 12px', marginBottom: '6px' },
+  detailHeader: { padding: '20px 24px', borderBottom: '1px solid var(--border-default)', background: 'transparent', position: 'relative' },
   closeBtn: { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' },
   detailMasked: { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '8px' },
   flagStrip: { display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--red-dim)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', padding: '8px 12px', marginTop: '10px' },
@@ -133,7 +133,7 @@ const S = {
   centerMsg: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', color: 'var(--text-muted)' },
 }
 
-/* ── SHIMMER KEYFRAMES (inject once) ───────────────── */
+/* â”€â”€ SHIMMER KEYFRAMES (inject once) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 if (typeof document !== 'undefined' && !document.getElementById('fc-shimmer-style')) {
   const style = document.createElement('style')
   style.id = 'fc-shimmer-style'
@@ -215,7 +215,7 @@ export default function FinancialCrime() {
     })
   }, [data, searchTerm, typeFilter, riskFilter])
 
-  /* ── LOADING STATE ───────────────────────────────── */
+  /* â”€â”€ LOADING STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   if (loading) {
     return (
       <div className="arise-page-enter" style={S.page}>
@@ -239,7 +239,7 @@ export default function FinancialCrime() {
     )
   }
 
-  /* ── ERROR STATE ─────────────────────────────────── */
+  /* â”€â”€ ERROR STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   if (error) {
     return (
       <div style={{ ...S.page, ...S.centerMsg }}>
@@ -254,10 +254,10 @@ export default function FinancialCrime() {
   const typeKeys = Object.keys(summary.tokensByType || {})
   const totalPatternsDetected = (summary.simSwapCount || 0) + (summary.muleAccountCount || 0) + (summary.multiRoutingCount || 0)
 
-  /* ── RENDER ──────────────────────────────────────── */
+  /* â”€â”€ RENDER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   return (
     <div className="arise-page-enter" style={S.page}>
-      {/* ══════════ LEFT PANEL ══════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â• LEFT PANEL â•â•â•â•â•â•â•â•â•â• */}
       <div style={S.leftPanel}>
         <div style={S.headerBar}>
           {/* KPI strip */}
@@ -331,7 +331,7 @@ export default function FinancialCrime() {
                   <div style={S.typeBadge(cfg)}>{cfg.icon}</div>
                   <div style={S.tokenMid}>
                     <div style={S.maskedVal}>{tok.token_value_masked || tok.token_uid}</div>
-                    <div style={S.subText}>{[tok.bank_name, tok.telecom_operator].filter(Boolean).join(' · ') || cfg.label}</div>
+                    <div style={S.subText}>{[tok.bank_name, tok.telecom_operator].filter(Boolean).join(' Â· ') || cfg.label}</div>
                     {tok.registered_state && <div style={S.subText2}>{tok.registered_state}</div>}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -346,9 +346,9 @@ export default function FinancialCrime() {
                 </div>
                 <div style={S.statsRow}>
                   <span>{tok.txCount} transactions</span>
-                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Â·</span>
                   <span style={{ color: tok.amount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{formatINR(tok.amount)}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Â·</span>
                   <span>{tok.linkedOffenderCount} linked accused</span>
                 </div>
                 {tok.linkedOffenders?.length > 0 && (
@@ -359,7 +359,7 @@ export default function FinancialCrime() {
                   </div>
                 )}
                 {tok.is_flagged && tok.flag_reason_text && (
-                  <div style={S.flagReason}>{tok.flag_reason_text.length > 60 ? tok.flag_reason_text.slice(0, 60) + '…' : tok.flag_reason_text}</div>
+                  <div style={S.flagReason}>{tok.flag_reason_text.length > 60 ? tok.flag_reason_text.slice(0, 60) + 'â€¦' : tok.flag_reason_text}</div>
                 )}
               </div>
             )
@@ -373,10 +373,10 @@ export default function FinancialCrime() {
         </div>
       </div>
 
-      {/* ══════════ RIGHT PANEL ══════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â• RIGHT PANEL â•â•â•â•â•â•â•â•â•â• */}
       <div style={S.rightPanel}>
         {!selectedToken ? (
-          /* ── No selection: fraud pattern analysis ── */
+          /* â”€â”€ No selection: fraud pattern analysis â”€â”€ */
           <>
             <div style={S.tabBar}>
               {[
@@ -391,7 +391,7 @@ export default function FinancialCrime() {
             </div>
             <div style={S.rightScroll}>
 
-              {/* ── FRAUD PATTERNS TAB ── */}
+              {/* â”€â”€ FRAUD PATTERNS TAB â”€â”€ */}
               {activeTab === 'patterns' && (
                 <>
                   {/* SIM-Swap */}
@@ -416,7 +416,7 @@ export default function FinancialCrime() {
                           <div key={j} style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>{o.fullName}</div>
                         ))}
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '4px' }}>
-                          Typical pattern: SIM swap → OTP intercept → fund transfer
+                          Typical pattern: SIM swap â†’ OTP intercept â†’ fund transfer
                         </div>
                       </div>
                     )) : <div style={S.emptyMsg}>No SIM-swap patterns detected</div>}
@@ -436,7 +436,7 @@ export default function FinancialCrime() {
                           <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-primary)' }}>{m.maskedValue}</span>
                         </div>
                         {m.bank && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bank: {m.bank}</div>}
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.txCount} transactions · {formatINR(m.amount)}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.txCount} transactions Â· {formatINR(m.amount)}</div>
                         {m.linkedOffenders?.map((o, j) => (
                           <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{o.fullName}</span>
@@ -478,7 +478,7 @@ export default function FinancialCrime() {
                 </>
               )}
 
-              {/* ── TOKEN BREAKDOWN TAB ── */}
+              {/* â”€â”€ TOKEN BREAKDOWN TAB â”€â”€ */}
               {activeTab === 'breakdown' && (
                 <>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>Instrument type distribution</h3>
@@ -509,10 +509,10 @@ export default function FinancialCrime() {
                 </>
               )}
 
-              {/* ── ZIA INTELLIGENCE TAB ── */}
+              {/* â”€â”€ ZIA INTELLIGENCE TAB â”€â”€ */}
               {activeTab === 'zia' && (
                 <>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>✨ {t('fc.ziaIntelligence')}</h3>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>âœ¨ {t('fc.ziaIntelligence')}</h3>
                   <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
                     Keywords extracted from flagged instrument reasons using Zia Text Analytics
                   </p>
@@ -530,7 +530,7 @@ export default function FinancialCrime() {
                     </div>
                   )) : (
                     <div style={S.emptyMsg}>
-                      Zia analysis runs on flagged instruments. Enable Zia Text Analytics in Catalyst Console → Zia Services.
+                      Zia analysis runs on flagged instruments. Enable Zia Text Analytics in Catalyst Console â†’ Zia Services.
                     </div>
                   )}
                 </>
@@ -538,7 +538,7 @@ export default function FinancialCrime() {
             </div>
           </>
         ) : (
-          /* ── TOKEN SELECTED: detail panel ── */
+          /* â”€â”€ TOKEN SELECTED: detail panel â”€â”€ */
           <>
             <div style={S.detailHeader}>
               <button className="fc-close-btn" style={S.closeBtn} onClick={() => { setSelectedToken(null); setTokenDetail(null); setMoneyTrail(null) }}>
@@ -549,7 +549,7 @@ export default function FinancialCrime() {
               </div>
               <div style={S.detailMasked}>{selectedToken.token_value_masked || selectedToken.token_uid}</div>
               <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {[selectedToken.bank_name, selectedToken.telecom_operator, selectedToken.registered_state].filter(Boolean).join(' · ')}
+                {[selectedToken.bank_name, selectedToken.telecom_operator, selectedToken.registered_state].filter(Boolean).join(' Â· ')}
               </div>
               {selectedToken.is_flagged && (
                 <div style={S.flagStrip}>
@@ -654,7 +654,7 @@ export default function FinancialCrime() {
                           </span>
                         )}
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          {[f.district_name || f.district, formatDate(f.fir_registration_datetime || f.date)].filter(Boolean).join(' · ')}
+                          {[f.district_name || f.district, formatDate(f.fir_registration_datetime || f.date)].filter(Boolean).join(' Â· ')}
                         </div>
                         {(f.complainant_name || f.complainant) && (
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Complainant: {f.complainant_name || f.complainant}</div>
@@ -676,14 +676,14 @@ export default function FinancialCrime() {
                           <div style={S.trailNode('var(--text-primary)')}>
                             {tokenDetail?.linkedOffenders?.[0]?.full_name || tokenDetail?.linkedOffenders?.[0]?.fullName || 'Accused'}
                           </div>
-                          <span style={S.trailArrow}>→</span>
+                          <span style={S.trailArrow}>â†’</span>
                           {/* Token node */}
                           <div style={S.trailNode(getTokenConfig(selectedToken.token_type).color)}>
                             {selectedToken.token_value_masked || selectedToken.token_uid}
                           </div>
                           {tokenDetail?.linkedFirs?.[0] && (
                             <>
-                              <span style={S.trailArrow}>→</span>
+                              <span style={S.trailArrow}>â†’</span>
                               <div style={S.trailNode('#22d3ee')}>
                                 {tokenDetail.linkedFirs[0].fir_uid || tokenDetail.linkedFirs[0].firUid || 'FIR'}
                               </div>
@@ -724,3 +724,4 @@ export default function FinancialCrime() {
     </div>
   )
 }
+

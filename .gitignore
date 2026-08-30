@@ -1,0 +1,92 @@
+# Node modules
+node_modules/
+client/node_modules/
+functions/*/node_modules/
+
+# Environments
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build directories
+dist/
+client/dist/
+build/
+*.zip
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS Files
+.DS_Store
+*.pem
+
+# Catalyst
+.catalystrc
+functions/*/temp/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated voiceover audio
+voiceover_clips/
+voiceover_full.mp3
+test.mp3
+
+# Temp/scratch folders
+temp_bot/
+temp_extract2/
+temp_frontend/
+old working for reference/
+tutorial-convokraft/
+ai voice information/
+
+# One-off fix/patch scripts (keep project clean)
+fix_*.js
+fix_*.py
+fix_*.ps1
+fix*.js
+fix*.py
+update_*.js
+patch*.js
+patch*.py
+add_*.js
+append_*.py
+check_*.py
+count.py
+create_*.py
+extract*.js
+extract*.py
+find_*.py
+generate_*.py
+!generate_voiceover.py
+list_*.py
+parse*.py
+rebuild.py
+serve_log.txt
+user_prompts.txt
+repo_structure.txt
+
+# Seed / data scripts (sensitive)
+seed_*.js
+simulate_*.js
+push_graph_data.js
+call_webhooks.js
+test_*.js
+local_*.js
+
+# Broken/backup files
+functions/get_crime_analytics/index_broken.js

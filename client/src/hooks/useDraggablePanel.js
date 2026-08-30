@@ -62,6 +62,25 @@ export function useDraggablePanel(initialPos) {
     }
   }, []) // ← empty dep array — runs once, no stale closure
 
+  // BUG-021: Re-clamp position when window resizes
+  useEffect(() => {
+    const onResize = () => {
+      const el = panelRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const maxX = Math.max(0, window.innerWidth - rect.width)
+      const maxY = Math.max(0, window.innerHeight - rect.height)
+      setPos(prev => {
+        const cx = Math.max(0, Math.min(prev.x, maxX))
+        const cy = Math.max(0, Math.min(prev.y, maxY))
+        if (cx !== prev.x || cy !== prev.y) return { x: cx, y: cy }
+        return prev
+      })
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const style = {
     position: 'fixed',
     left: pos.x,

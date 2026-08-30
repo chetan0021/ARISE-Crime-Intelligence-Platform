@@ -18,7 +18,7 @@ const BNS_LABELS = {
   'BNS-302': 'Armed Robbery'
 }
 
-/* ── ANIMATION STYLES ── */
+/* —— ANIMATION STYLES —— */
 if (typeof document !== 'undefined' && !document.getElementById('rp-style')) {
   const style = document.createElement('style')
   style.id = 'rp-style'
@@ -36,7 +36,7 @@ if (typeof document !== 'undefined' && !document.getElementById('rp-style')) {
   document.head.appendChild(style)
 }
 
-/* ── CONFIDENCE GAUGE ── */
+/* —— CONFIDENCE GAUGE —— */
 function ConfidenceGauge({ score }) {
   const pct = Math.min(Math.max(score || 0, 0), 1)
   const color = pct > 0.8 ? 'var(--green)' : pct > 0.6 ? 'var(--text-primary)' : 'var(--red)'
@@ -69,7 +69,7 @@ function ConfidenceGauge({ score }) {
   )
 }
 
-/* ── IMPACT COLOR ── */
+/* —— IMPACT COLOR —— */
 function impactColor(impact) {
   if (impact === 'CRITICAL') return 'var(--red)'
   if (impact === 'HIGH') return 'var(--text-primary)'
@@ -77,7 +77,7 @@ function impactColor(impact) {
   return 'var(--text-muted)'
 }
 
-/* ── PRIORITY COLOR ── */
+/* —— PRIORITY COLOR —— */
 function priorityColor(priority) {
   if (priority === 'CRITICAL') return 'var(--red)'
   if (priority === 'HIGH') return 'var(--text-primary)'
@@ -85,7 +85,7 @@ function priorityColor(priority) {
   return 'var(--text-muted)'
 }
 
-/* ── EVENT TYPE COLOR ── */
+/* —— EVENT TYPE COLOR —— */
 function eventColor(type) {
   if (type === 'INSERT') return 'var(--green)'
   if (type === 'SELECT') return 'var(--blue)'
@@ -94,7 +94,7 @@ function eventColor(type) {
   return 'var(--text-muted)'
 }
 
-/* ── FORMAT DATETIME ── */
+/* —— FORMAT DATETIME —— */
 function fmtDt(dt) {
   if (!dt) return '—'
   try {
@@ -267,7 +267,7 @@ export default function Reports() {
     }
 
     // ==================================================================
-    // ── PAGE 1: COVER ───────────────────────────────────────────────
+    // —— PAGE 1: COVER ———————————————————————————————————————————————
     // ==================================================================
     const cover = node('div', {
       width: '100%',
@@ -332,11 +332,11 @@ export default function Reports() {
     });
     const tiles = [
       { label: 'Report Type', val: (reportType || '').replace(/_/g, ' ').toUpperCase(), icon: '📋', color: C.accent },
-      { label: 'District', val: fir?.district_name || '—', icon: '📍', color: C.green },
-      { label: 'Police Station', val: fir?.police_station_code || '—', icon: '🚔', color: C.purple },
-      { label: 'Status', val: fir?.case_status || '—', icon: '⚖️', color: C.amber },
+      { label: 'District', val: fir?.district_name || '—', icon: 'ðŸ“', color: C.green },
+      { label: 'Police Station', val: fir?.police_station_code || '—', icon: '🚓', color: C.purple },
+      { label: 'Status', val: fir?.case_status || '—', icon: 'âš–ï¸', color: C.amber },
       { label: 'IO / Officer', val: fir?.io_name || 'Unassigned', icon: '👮', color: C.primary },
-      { label: 'Generated on', val: new Date().toLocaleString('en-IN'), icon: '🗓️', color: C.textMuted }
+      { label: 'Generated on', val: new Date().toLocaleString('en-IN'), icon: 'ðŸ—“ï¸', color: C.textMuted }
     ];
     tiles.forEach(t => {
       const card = node('div', { padding: '12px 14px', border: `1px solid ${C.border}`, borderRadius: '10px', background: C.bgCard });
@@ -396,7 +396,7 @@ export default function Reports() {
     renderer.appendChild(cover);
 
     // ==================================================================
-    // ── PAGE 2: EXPLAINABILITY + GRAPHS ─────────────────────────────
+    // —— PAGE 2: EXPLAINABILITY + GRAPHS —————————————————————————————
     // ==================================================================
     const page2 = node('div', {
       width: '100%',
@@ -485,7 +485,7 @@ export default function Reports() {
       lab.setAttribute('font-size', '9');
       lab.setAttribute('font-weight', 600);
       lab.setAttribute('fill', C.primary);
-      lab.textContent = f.factor.length > 10 ? (f.factor.substring(0, 9) + '…') : f.factor;
+      lab.textContent = f.factor.length > 10 ? (f.factor.substring(0, 9) + 'â€¦') : f.factor;
       svg.appendChild(lab);
     });
     // Chart title
@@ -540,7 +540,7 @@ export default function Reports() {
     renderer.appendChild(page2);
 
     // ==================================================================
-    // ── PAGES 3+: NARRATIVE SECTIONS + LEADS + SIMILAR CASES ─────────
+    // —— PAGES 3+: NARRATIVE SECTIONS + LEADS + SIMILAR CASES —————————
     // ==================================================================
     sections.forEach((sec, sIdx) => {
       const page = node('div', {
@@ -625,7 +625,7 @@ export default function Reports() {
     });
 
     // ==================================================================
-    // ── LAST PAGE: LEADS + SIMILAR CASES + INTEGRITY + SIGNATURE ────
+    // —— LAST PAGE: LEADS + SIMILAR CASES + INTEGRITY + SIGNATURE ————
     // ==================================================================
     const lastPage = node('div', {
       width: '100%',
@@ -636,7 +636,7 @@ export default function Reports() {
     // LEADS
     const leadsHead = node('div', { marginBottom: '12px', borderBottom: `2px solid ${C.border}`, paddingBottom: '6px' });
     leadsHead.appendChild(node('div', { fontSize: '10px', letterSpacing: '3px', color: C.red, fontWeight: 700, textTransform: 'uppercase' }, 'Chapter 02'));
-    leadsHead.appendChild(node('div', { fontSize: '20px', fontWeight: 900, color: C.primary }, `Investigative Leads · ${investigativeLeads.length} Actions`));
+      leadsHead.appendChild(node('div', { fontSize: '20px', fontWeight: 900, color: C.primary }, `Investigative Leads — ${investigativeLeads.length} Actions`));
     lastPage.appendChild(leadsHead);
 
     investigativeLeads.forEach((l, i) => {
@@ -673,7 +673,7 @@ export default function Reports() {
       tPill.textContent = (l.type || 'GENERAL').replace(/_/g, ' ');
       topR.appendChild(pPill);
       topR.appendChild(tPill);
-      topR.appendChild(node('div', { fontSize: '11px', color: C.textMuted }, `⏱ ${l.deadline || 'TBD'}`));
+      topR.appendChild(node('div', { fontSize: '11px', color: C.textMuted }, `â± ${l.deadline || 'TBD'}`));
       right.appendChild(topR);
       right.appendChild(node('div', { fontSize: '12.5px', fontWeight: 800, color: C.primary, marginBottom: '3px' }, l.action || '—'));
       right.appendChild(node('div', { fontSize: '11px', color: C.textMuted, lineHeight: 1.4 }, l.reason || ''));
@@ -894,20 +894,20 @@ export default function Reports() {
     }
   ]
 
-  /* ── STYLES ── */
+  /* —— STYLES —— */
   const S = {
     page: {
       display: 'flex',
       height: '100%',
       fontFamily: "var(--font-sans)",
-      background: 'var(--bg-base)',
+      background: 'transparent',
       color: 'var(--text-primary)',
       overflow: 'hidden'
     },
     left: {
       width: 320,
       minWidth: 320,
-      background: 'var(--bg-page)',
+      background: 'transparent',
       borderRight: '1px solid var(--border-default)',
       display: 'flex',
       flexDirection: 'column',
@@ -987,7 +987,7 @@ export default function Reports() {
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      background: 'var(--bg-base)',
+      background: 'transparent',
       overflow: 'hidden'
     },
     emptyState: {
@@ -1001,7 +1001,7 @@ export default function Reports() {
     tabBar: {
       display: 'flex',
       borderBottom: '1px solid var(--border-active)',
-      background: 'var(--bg-page)',
+      background: 'transparent',
       padding: '0 20px',
       gap: 4,
       flexShrink: 0
@@ -1028,7 +1028,7 @@ export default function Reports() {
     }
   }
 
-  /* ── LEFT PANEL ── */
+  /* —— LEFT PANEL —— */
   return (
     <div className="arise-page-enter" style={S.page}>
       <div style={S.left}>
@@ -1043,7 +1043,7 @@ export default function Reports() {
             <option value="">Choose a FIR...</option>
             {firList.map(f => (
               <option key={f.firUid} value={f.firUid}>
-                {f.deadlineBreached ? '⚠ ' : ''}{f.firUid} — {f.district} — {f.section}
+                {f.deadlineBreached ? '⚠️ ' : ''}{f.firUid} — {f.district} — {f.section}
               </option>
             ))}
           </select>
@@ -1164,7 +1164,7 @@ export default function Reports() {
         )}
       </div>
 
-      {/* ── RIGHT PANEL ── */}
+      {/* —— RIGHT PANEL —— */}
       <div style={S.right}>
         {/* No report state */}
         {!reportData && !generating && (
@@ -1236,7 +1236,7 @@ export default function Reports() {
             </div>
 
             <div style={S.tabContent}>
-              {/* ══════════ REPORT TAB ══════════ */}
+              {/* â•â•â•â•â•â•â•â•â•â• REPORT TAB â•â•â•â•â•â•â•â•â•â• */}
               {activeTab === 'report' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Report Header */}
@@ -1286,7 +1286,7 @@ export default function Reports() {
                           border: reportData.reportGeneratedByLLM ? '1px solid rgba(74,222,128,0.25)' : '1px solid var(--border-active)',
                           color: reportData.reportGeneratedByLLM ? 'var(--green)' : 'var(--text-muted)'
                         }}>
-                          {reportData.reportGeneratedByLLM ? '● Catalyst GLM' : '● Rule engine'}
+                          {reportData.reportGeneratedByLLM ? 'â— Catalyst GLM' : 'â— Rule engine'}
                         </div>
                         <div style={{
                           fontSize: 12, fontWeight: 600,
@@ -1312,7 +1312,7 @@ export default function Reports() {
                         onClick={exportReport}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
-                          background: 'var(--border-active)', border: 'none', color: 'var(--text-secondary)',
+                          background: 'rgba(0, 229, 255, 0.1)', border: '1px solid var(--border-active)', color: 'var(--text-primary)',
                           padding: '7px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer'
                         }}
                       >
@@ -1349,7 +1349,7 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* ══════════ EXPLAINABILITY TAB ══════════ */}
+              {/* â•â•â•â•â•â•â•â•â•â• EXPLAINABILITY TAB â•â•â•â•â•â•â•â•â•â• */}
               {activeTab === 'explain' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div>
@@ -1412,7 +1412,7 @@ export default function Reports() {
                               <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Source:</span>
                               <span style={{
                                 fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)',
-                                background: 'var(--bg-page)', border: '1px solid var(--border-active)',
+                                background: 'transparent', border: '1px solid var(--border-active)',
                                 borderRadius: 4, padding: '1px 7px'
                               }}>
                                 {f.dataSource}
@@ -1462,7 +1462,7 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* ══════════ LEADS TAB ══════════ */}
+              {/* â•â•â•â•â•â•â•â•â•â• LEADS TAB â•â•â•â•â•â•â•â•â•â• */}
               {activeTab === 'leads' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div>
@@ -1501,7 +1501,7 @@ export default function Reports() {
                           </span>
                           <span style={{
                             fontSize: 9, fontWeight: 600, color: 'var(--text-muted)',
-                            background: 'var(--bg-page)', border: '1px solid var(--border-active)',
+                            background: 'transparent', border: '1px solid var(--border-active)',
                             padding: '2px 7px', borderRadius: 4
                           }}>
                             {lead.type}
@@ -1583,7 +1583,7 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* ══════════ EVIDENCE TRAIL TAB ══════════ */}
+              {/* â•â•â•â•â•â•â•â•â•â• EVIDENCE TRAIL TAB â•â•â•â•â•â•â•â•â•â• */}
               {activeTab === 'evidence' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div>
@@ -1614,7 +1614,7 @@ export default function Reports() {
                           SHA-256 hash chain intact — {t('rp.bsaCompliant')}
                         </div>
                         <div style={{
-                          background: 'var(--bg-page)',
+                          background: 'transparent',
                           border: '1px solid var(--border-active)',
                           borderRadius: 6,
                           padding: '10px 14px',
@@ -1737,13 +1737,13 @@ export default function Reports() {
                                     borderRadius: 4, padding: '4px 8px',
                                     marginBottom: 6
                                   }}>
-                                    ⚠ Anomalous access detected
+                                    âš  Anomalous access detected
                                   </div>
                                 )}
                                 {entry.data_after_hash && (
                                   <div style={{
                                     fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)',
-                                    background: 'var(--bg-page)', borderRadius: 4, padding: '3px 8px',
+                                    background: 'transparent', borderRadius: 4, padding: '3px 8px',
                                     display: 'inline-block', marginBottom: 6
                                   }}>
                                     {String(entry.data_after_hash).slice(0, 16)}...
@@ -1765,7 +1765,7 @@ export default function Reports() {
                                     {expandedQueries[uid] && (
                                       <div style={{
                                         fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)',
-                                        background: 'var(--bg-page)', border: '1px solid var(--border-active)',
+                                        background: 'transparent', border: '1px solid var(--border-active)',
                                         borderRadius: 4, padding: '8px 10px', marginTop: 4,
                                         whiteSpace: 'pre-wrap', wordBreak: 'break-all'
                                       }}>
@@ -1790,3 +1790,4 @@ export default function Reports() {
     </div>
   )
 }
+

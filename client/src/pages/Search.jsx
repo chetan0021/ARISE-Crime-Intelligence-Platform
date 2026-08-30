@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search as SearchIcon, FileText, User, MapPin, Shield, AlertTriangle,
@@ -10,12 +10,12 @@ import { useLang } from '../context/LanguageContext'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
-/* ── BNS LABELS MAP ──────────────────────────────── */
+/* â”€â”€ BNS LABELS MAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const BNS_LABELS = {
   'BNS-303': 'Theft',
-  'BNS-309(4)': 'Robbery · Snatching',
-  'BNS-318(4)': 'Cyber Fraud · OTP',
-  'BNS-331(3)': 'Housebreaking · Night',
+  'BNS-309(4)': 'Robbery Â· Snatching',
+  'BNS-318(4)': 'Cyber Fraud Â· OTP',
+  'BNS-331(3)': 'Housebreaking Â· Night',
   'BNS-115': 'Assault',
   'BNS-103': 'Murder',
   'BNS-302': 'Armed Robbery',
@@ -25,25 +25,25 @@ const BNS_LABELS = {
 function getBNSLabel(section) {
   if (!section) return 'Unknown'
   return BNS_LABELS[section]
-    ? `${section} · ${BNS_LABELS[section]}`
+    ? `${section} Â· ${BNS_LABELS[section]}`
     : section
 }
 
-/* ── STYLES ──────────────────────────────────────── */
+/* â”€â”€ STYLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const S = {
   container: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
     fontFamily: "var(--font-sans)",
-    background: 'var(--bg-base)',
+    background: 'transparent',
     color: 'var(--text-primary)',
     overflow: 'hidden'
   },
   topBar: {
     padding: '20px 24px 12px 24px',
     borderBottom: '1px solid var(--bg-card)',
-    background: 'var(--bg-page)',
+    background: 'transparent',
     position: 'relative'
   },
   searchBox: {
@@ -152,7 +152,7 @@ const S = {
     fontSize: '12px',
     color: 'var(--text-muted)',
     borderBottom: '1px solid var(--border-subtle)',
-    background: 'var(--bg-page)'
+    background: 'transparent'
   },
   resultCard: (selected) => ({
     padding: '16px',
@@ -233,13 +233,13 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    background: 'var(--bg-base)',
+    background: 'transparent',
     overflowY: 'auto'
   },
   detailHeader: {
     padding: '24px',
     borderBottom: '1px solid var(--bg-card)',
-    background: 'var(--bg-page)'
+    background: 'transparent'
   },
   detailTitle: {
     fontSize: '20px',
@@ -479,7 +479,7 @@ const S = {
   bsaFooter: {
     padding: '16px 24px',
     borderTop: '1px solid var(--bg-card)',
-    background: 'var(--bg-page)',
+    background: 'transparent',
     display: 'flex',
     alignItems: 'center',
     gap: '10px'
@@ -690,7 +690,7 @@ export default function Search() {
 
   return (
     <div className="arise-page-enter" style={S.container}>
-      {/* ── SECTION 1: SEARCH BAR ── */}
+      {/* â”€â”€ SECTION 1: SEARCH BAR â”€â”€ */}
       <div style={S.topBar}>
         <div style={S.searchBox}>
           <SearchIcon size={20} color="var(--text-muted)" />
@@ -710,7 +710,7 @@ export default function Search() {
               <X size={18} />
             </button>
           )}
-          <span style={S.hint}>Enter ↵</span>
+          <span style={S.hint}>Enter â†µ</span>
         </div>
 
         {/* Suggestions Autocomplete Dropdown */}
@@ -765,7 +765,7 @@ export default function Search() {
         </div>
       </div>
 
-      {/* ── SECTION 2 & 3: MAIN WORKSPACE ── */}
+      {/* â”€â”€ SECTION 2 & 3: MAIN WORKSPACE â”€â”€ */}
       <div style={S.mainArea}>
         {searching ? (
           <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--text-secondary)' }}>
@@ -862,7 +862,7 @@ export default function Search() {
                               {r.district_name}
                             </div>
                             <div style={S.cardMuted}>
-                              {r.case_status} · {formatDate(r.fir_registration_datetime)}
+                              {r.case_status} Â· {formatDate(r.fir_registration_datetime)}
                             </div>
                             <div style={S.cardMatch}>
                               {t('si.matchedOn')}: {r.matchedOn}
@@ -913,7 +913,7 @@ export default function Search() {
                               </div>
                             </div>
                             <div style={{ ...S.cardMuted, marginTop: '6px' }}>
-                              Arrests: {r.total_prior_arrests || 0} {repeat && '· Repeat Offender'}
+                              Arrests: {r.total_prior_arrests || 0} {repeat && 'Â· Repeat Offender'}
                             </div>
                             <div style={S.cardMatch}>
                               {t('si.matchedOn')}: {r.matchedOn}
@@ -942,7 +942,7 @@ export default function Search() {
                               </span>
                             </div>
                             <div style={S.cardSub}>
-                              {r.section} · {r.district}
+                              {r.section} Â· {r.district}
                             </div>
                             <div style={{ ...S.cardMuted, fontFamily: 'monospace', color: 'var(--text-primary)' }}>
                               Linked FIR: {r.linkedFirUid}
@@ -1002,7 +1002,7 @@ export default function Search() {
                   <div style={S.detailHeader}>
                     <div style={S.detailTitle}>{caseDetail.fir?.fir_uid}</div>
                     <div style={S.detailSub}>
-                      {[caseDetail.fir?.police_station_code, caseDetail.fir?.district_name, caseDetail.fir?.subdivision_name].filter(Boolean).join(' · ')}
+                      {[caseDetail.fir?.police_station_code, caseDetail.fir?.district_name, caseDetail.fir?.subdivision_name].filter(Boolean).join(' Â· ')}
                     </div>
                     <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <span style={S.badge('var(--amber-dim)', 'var(--text-primary)')}>
@@ -1130,7 +1130,7 @@ export default function Search() {
                               <div style={S.timelineLabel}>Chargesheet deadline (BNSS Sec. 193)</div>
                               {timeline.isBreached ? (
                                 <div style={{ ...S.timelineSub, color: 'var(--red)', fontWeight: 600 }}>
-                                  ⚠ {t('si.deadlineBreached').toUpperCase()}
+                                  âš  {t('si.deadlineBreached').toUpperCase()}
                                 </div>
                               ) : (
                                 <div style={S.timelineSub}>
@@ -1243,7 +1243,7 @@ export default function Search() {
                           {mo && (
                             <div style={S.accusedMO}>
                               <strong>Modus Operandi:</strong> {mo.crime_category || 'Unknown'} (Sub: {mo.crime_subcategory}). entry: {mo.entry_method || 'unknown'}, exit: {mo.escape_method || 'unknown'}. instrument: {mo.instrument_used || 'none'}.
-                              {mo.property_stolen_value_inr > 0 && ` Stolen value: ₹${parseFloat(mo.property_stolen_value_inr).toLocaleString('en-IN')}`}
+                              {mo.property_stolen_value_inr > 0 && ` Stolen value: â‚¹${parseFloat(mo.property_stolen_value_inr).toLocaleString('en-IN')}`}
                             </div>
                           )}
 
@@ -1270,7 +1270,7 @@ export default function Search() {
                                 })
                               }}
                             >
-                              View full profile →
+                              View full profile â†’
                             </button>
                           </div>
                         </div>
@@ -1316,7 +1316,7 @@ export default function Search() {
                               {fe.evidence_description_text}
                             </div>
                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                              Seized: {formatDate(fe.seizure_datetime)} from {fe.seized_from_person || 'unknown'} · Location: {fe.storage_location}
+                              Seized: {formatDate(fe.seizure_datetime)} from {fe.seized_from_person || 'unknown'} Â· Location: {fe.storage_location}
                             </div>
                             {fe.chain_of_custody_log && (
                               <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '4px' }}>
@@ -1377,7 +1377,7 @@ export default function Search() {
                             {c.fir_uid}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            {c.district_name} · {formatDate(c.fir_registration_datetime)}
+                            {c.district_name} Â· {formatDate(c.fir_registration_datetime)}
                           </div>
                         </div>
                         <span style={S.badge('rgba(251,113,133,0.1)', '#fb7185')}>{c.bns_primary_section}</span>
@@ -1399,7 +1399,7 @@ export default function Search() {
                           {t('si.integrity')}
                         </div>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                          BSA Sec 63 blockchain audit validation · SHA-256 chain intact
+                          BSA Sec 63 blockchain audit validation Â· SHA-256 chain intact
                         </div>
                       </div>
                       <span style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
@@ -1416,3 +1416,4 @@ export default function Search() {
     </div>
   )
 }
+

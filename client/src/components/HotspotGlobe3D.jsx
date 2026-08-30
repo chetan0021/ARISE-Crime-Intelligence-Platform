@@ -164,6 +164,7 @@ function GlobeInner({ heatLayer=[], pinLayer=[], flyTarget, onPointSelect, onSwi
   const containerRef = useRef()
   const [dims, setDims]   = useState({ w:900, h:700 })
   const [tick, setTick]   = useState(0)
+  const [isRotating, setIsRotating] = useState(false)
 
   const points = useMemo(() => [
     ...buildPoints(heatLayer, pinLayer),
@@ -213,12 +214,12 @@ function GlobeInner({ heatLayer=[], pinLayer=[], flyTarget, onPointSelect, onSwi
         if (!g) return
         const ctrl = g.controls()
         if (ctrl) {
-          ctrl.autoRotate      = true
+          ctrl.autoRotate      = isRotating
           ctrl.autoRotateSpeed = 0.20
           ctrl.enableZoom      = true
           ctrl.minDistance     = 110
           ctrl.maxDistance     = 500
-          ctrl.enablePan       = false
+          ctrl.enablePan       = true
         }
         g.pointOfView({ lat:15.5, lng:76.0, altitude:1.6 }, 0)
         try {
@@ -246,6 +247,11 @@ function GlobeInner({ heatLayer=[], pinLayer=[], flyTarget, onPointSelect, onSwi
       1400
     )
   }, [flyTarget])
+
+  useEffect(() => {
+    const ctrl = globeRef.current?.controls()
+    if (ctrl) ctrl.autoRotate = isRotating
+  }, [isRotating])
 
   const handlePointClick = useCallback(pt => {
     if (pt?.pointType==='cloud') return
@@ -292,6 +298,8 @@ function GlobeInner({ heatLayer=[], pinLayer=[], flyTarget, onPointSelect, onSwi
         pointLat="lat" pointLng="lng" pointAltitude="alt"
         pointRadius="size" pointColor="color"
         pointsMerge={false} pointsTransitionDuration={500}
+        onZoom={() => setIsRotating(false)}
+        onGlobeClick={() => setIsRotating(false)}
         pointLabel={d => {
           if (d.pointType==='cloud') return null
           if (d.pointType==='station')
@@ -384,9 +392,27 @@ function GlobeInner({ heatLayer=[], pinLayer=[], flyTarget, onPointSelect, onSwi
             hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
           }).toUpperCase()}
         </span>
-        {['◀◀','◀','▶','▶▶'].map((s,i)=>(
-          <span key={i} style={{ color:i===2?'#00e5ff':'#475569', fontSize:i===2?10:8 }}>{s}</span>
+        {['◀◀','◀'].map((s,i)=>(
+          <span key={i} style={{ color:'#475569', fontSize:8 }}>{s}</span>
         ))}
+        <button 
+          onClick={() => setIsRotating(!isRotating)} 
+          style={{ 
+            background: isRotating ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)', 
+            border: `1px solid ${isRotating ? 'rgba(0,229,255,0.4)' : 'rgba(255,255,255,0.1)'}`, 
+            color: isRotating ? '#00e5ff' : '#94a3b8', 
+            cursor: 'pointer', 
+            fontSize: 10, 
+            padding: '3px 8px',
+            borderRadius: '4px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.2s'
+          }}>
+          {isRotating ? '⏸ Auto-Rotate ON' : '▶ Auto-Rotate OFF'}
+        </button>
         <span style={{ color:'#475569' }}>1×</span>
         <div style={{ flex:1, height:2, background:'rgba(255,255,255,0.05)', borderRadius:1, position:'relative' }}>
           <div style={{ position:'absolute',inset:0,width:'62%',

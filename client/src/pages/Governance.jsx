@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { ShieldCheck, Database, Clock, Users, Search, AlertTriangle, FileText, Filter, Key } from 'lucide-react';
 import { useRole } from '../context/RoleContext';
 
@@ -126,7 +126,7 @@ export default function Governance() {
   );
 
   return (
-    <div className="arise-page-enter" style={{ padding: '24px', background: 'var(--bg-page)', minHeight: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="arise-page-enter" style={{ padding: '24px', background: 'transparent', minHeight: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -410,3 +410,4 @@ export default function Governance() {
     </div>
   );
 }
+

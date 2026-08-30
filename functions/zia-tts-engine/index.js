@@ -5,7 +5,7 @@ const { MsEdgeTTS, OUTPUT_FORMAT } = require('@aswinnnn/edge-tts');
 
 // Supported voices — Indian English by default, Kannada when explicitly requested.
 const VOICES = {
-  en: 'en-IN-NeerjaNeural',
+  en: 'en-US-AvaNeural',
   kn: 'kn-IN-SapnaNeural',
 };
 

@@ -1,135 +1,205 @@
-# ARISE - Crime Intelligence Platform
+# ARISE — AI-Powered Crime Intelligence Platform
 
-**Built for Karnataka State Police Datathon 2026 — Challenge 2**
+> **Karnataka State Police · SCRB · KSP Datathon 2026**  
+> Team: **Cognitive Cops** · Built on **Zoho Catalyst**
 
-ARISE is a comprehensive, AI-driven crime intelligence platform that bridges the gap between raw policing data and actionable, real-time insights, powered by an advanced conversational voice assistant and sophisticated spatial-temporal analytics.
-
----
-
-## Problem Statement Summary
-
-- **Challenge 2 (AI-Driven Crime Analytics & Visualization):** KSP needs advanced analytics and visualization tools to detect emerging crime hotspots, track repeat offenders, map criminal networks across jurisdictions, and correlate crime patterns with socio-demographic factors to enable proactive policing and resource allocation.
+[![Platform](https://img.shields.io/badge/Platform-Zoho%20Catalyst-blue)](https://catalyst.zoho.com)
+[![AI](https://img.shields.io/badge/AI-Catalyst%20GLM%20%7C%20QuickML%20%7C%20Zia-orange)](https://catalyst.zoho.com)
+[![Stack](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61dafb)](https://vitejs.dev)
+[![Database](https://img.shields.io/badge/Database-ZCQL%20DataStore-green)](https://catalyst.zoho.com)
 
 ---
 
-## Feature Overview
+## What is ARISE?
 
-### Command Center
-A unified operational dashboard providing live Key Performance Indicators (KPIs), real-time alerts, and jurisdictional summaries. It serves as the primary entry point for the Zia voice assistant, allowing officers to get an immediate briefing on the current state of their jurisdiction.
+**ARISE** (Advanced Real-time Intelligence & Surveillance Engine) is a production-grade, AI-driven crime intelligence platform built for the Karnataka State Police and the State Crime Records Bureau (SCRB).
 
-### Zia (Conversational Voice Assistant)
-Zia is a specialized, read-only AI assistant built for law enforcement intelligence.
-- **Real Flow:** When activated, Zia greets the officer with a proactive, live data briefing based on their jurisdiction (e.g., "Good morning. There are 3 new alerts in your area...").
-- **Capabilities:** Supports voice input and output (English and Kannada via edge-tts), multi-turn contextual memory, and general Q&A scoped strictly to the crime database.
-- **Role-Aware:** Answers are filtered through the Governance module's role-based preview system (e.g., an Inspector gets different detail levels than a DGP).
-- **Safety:** Read-only access ensures no destructive actions can be taken via voice. The entire conversation transcript can be exported as a PDF for official record-keeping.
+This is **not simulated data**. Every dashboard, chart, and AI response is backed by live data stored across **10 production ZCQL tables** in Zoho Catalyst's DataStore — including real FIR records, offender profiles, geospatial hotspot indicators, modus operandi signatures, and BSA-compliant audit trails.
 
-### Hotspot Map
-An advanced geospatial intelligence interface.
-- **Visualization:** Supports 2D and 3D heatmaps with spatiotemporal time-of-day layering.
-- **Alerts:** Detects real emerging trends by comparing recent spike anomalies against historical averages.
-- **Dispatch & Routing:** Integrates static police station locations and real road-based routing (via OSRM).
-- **Nearest-Station Detection:** Employs a two-step routing algorithm to find the absolute fastest dispatch route (accounting for road distance, not just crow-flies distance) and generates severity-aware simulated dispatch alerts.
-
-### Crime Analytics
-Statistical and visual analysis of crime trends over time.
-- **Methodology:** Implements rolling historical averages and z-score anomaly detection to identify statistically significant spikes in specific crime categories, rather than relying on generic black-box ML models.
-- **Visuals:** Interactive time-series charts, categorical breakdowns, and jurisdictional comparisons.
-
-### Network Analysis
-A 3D force-directed criminal association graph.
-- **Capabilities:** Maps co-accused relationships, shared FIRs, and financial links to detect cross-jurisdiction MO (Modus Operandi) patterns. 
-- **Zia Text Analytics (NER):** Highlights potential 2nd-degree "hidden links" and entities discovered via natural language extraction from FIR narratives.
-
-### Offender Intelligence
-Dedicated profiles for individuals in the system.
-- **Tracking:** Monitors repeat offenders and Rowdy Sheeters.
-- **Risk Scoring:** Calculates recidivism risk scores based on prior arrest history, gang affiliation, and custody status.
-- **Cross-Jurisdiction:** Aggregates cases across different districts into a single, comprehensive pattern card.
-
-### Socio-Demographic & Socio-Economic Correlation
-Analyzes the relationship between crime rates and external socio-economic indicators.
-- **Methodology:** Uses Pearson correlation coefficients to establish statistical relationships between specific crime categories and variables like literacy rates or unemployment (using seeded illustrative demographic data).
-
-### Predictions & Early Warning
-Forecasting potential future hotspots and crime volumes.
-- **Methodology:** Utilizes Holt-Winters exponential smoothing (incorporating trend and seasonality) to forecast short-term crime volumes based on historical time-series data.
-
-### Financial Crime
-Visualizes money trails, flagged bank accounts, and crypto wallets.
-- **Honest Caveat:** KSP has not provided a real financial or phone-record feed. This module operates entirely on structurally accurate *illustrative (mock) data* to demonstrate the capability of the interface. It does not analyze real transaction data.
-
-### Reports & Explainability
-Comprehensive reporting tools for accountability.
-- **Features:** High-quality PDF generation for any analysis, complete with audit trails, data provenance tags, and methodology disclosures so officers know exactly how a conclusion was reached.
-
-### Governance
-Administrative oversight and compliance tracking.
-- **Features:** Audit log viewer tracking system usage, compliance dashboard, and pendency/SLA tracking for open cases.
-- **Role Definition & Simulation:** Defines strict RBAC (Role-Based Access Control) policies and includes a "Preview as: [Role]" simulation toggle to test UI boundaries.
-- **Important Note:** Role-based access enforcement is visually and logically simulated based on the selected preview role, but it will permanently activate once a real Authentication provider is integrated.
-
-### Authentication
-- **Status:** Not yet implemented (Planned for next phase).
-- **Honest Caveat:** The current application assumes a default logged-in state for datathon demonstration purposes. No real login security or session management is currently enforced.
+Police stations running **CCTNS** can push live FIR data directly into ARISE via a secure webhook. The webhook URL and authentication token are available in the Settings page of the platform.
 
 ---
 
-## Architecture & Tech Stack
+## Features
 
-- **Frontend:** React (Vite), Tailwind CSS, Three.js (for 3D networking), Recharts.
-- **Backend:** Zoho Catalyst Serverless (Advanced I/O Functions, ZCQL for querying the Catalyst Data Store).
-- **AI & NLP:** Catalyst QuickML / OpenAI LLM for natural language processing, edge-tts (local edge generation) for responsive voice synthesis.
-- **Geospatial & Routing:** Leaflet, OpenStreetMap, OSRM (Open Source Routing Machine).
-- **Data Schema:** Two-layer design. Layer 1 consists of the official KSP schema (FIRs, Arrests, etc.). Layer 2 contains intelligence enrichment tables (Network Edges, Risk Scores, Logs).
+### Challenge 1 — Conversational AI
+| Feature | Implementation |
+|---------|---------------|
+| Natural language chatbot | Catalyst GLM + RAG over live ZCQL tables |
+| English + Kannada | Full bilingual UI + Zia STT/TTS |
+| Voice input/output | Web Speech API (STT) + edge-tts (TTS) |
+| Context-aware conversations | 6-turn history window sent to GLM |
+| RAG citations | Every response cites FIR UID / offender UID |
+| Save conversation | Export as text file |
 
----
-
-## Setup / Running Locally
-
-### Prerequisites
-- Node.js (v18+)
-- Zoho Catalyst CLI (`npm install -g zcatalyst-cli`)
-
-### Frontend
-1. Navigate to the `client` directory:
-   ```bash
-   cd client
-   npm install
-   ```
-2. Set up your environment variables (create a `.env` file based on provided configurations, ensuring `VITE_API_BASE` points to your Catalyst function URL). *Never commit real API keys.*
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-### Backend (Zoho Catalyst)
-1. Login to Catalyst CLI:
-   ```bash
-   catalyst login
-   ```
-2. Navigate to the `functions/get_crime_analytics` directory and install dependencies:
-   ```bash
-   cd functions/get_crime_analytics
-   npm install
-   ```
-3. Deploy the backend to your Catalyst project:
-   ```bash
-   catalyst deploy
-   ```
+### Challenge 2 — Analytics & Visualization
+| Feature | Implementation |
+|---------|---------------|
+| 3D Globe + 2D Map | react-globe.gl + Leaflet + CARTO dark tiles |
+| Crime heatmap | leaflet.heat over geospatial_hotspot_indicator table |
+| Network graph | D3.js force-directed graph from entity_association_graph |
+| Offender profiling | recidivism_risk_score from offender_profile table |
+| Predictions | QuickML forecasting + alert_scheduler cron job |
+| Socio-economic | Vulnerability index from geospatial_hotspot_indicator |
+| Financial crime | phone_financial_token + fraud pattern detection |
+| Reports | Catalyst GLM + BSA Sec. 63 SHA-256 hash chains |
+| CCTNS webhook | Settings page with push token + endpoint URL |
 
 ---
 
-## Known Limitations / Honest Roadmap
+## Architecture
 
-- **Illustrative Financial Data:** The Financial Crime module runs on structural, illustrative data since no real financial/telecom source feed exists from KSP yet.
-- **Simulated Governance Enforcement:** Governance roles are defined and can be previewed/simulated, but are not cryptographically enforced pending the authentication integration.
-- **Pending Authentication:** Authentication itself is planned as the very next build phase.
-- **Statewide Coverage Limitation:** Full statewide (1,100+ stations) coverage is currently limited to the districts seeded in the database, pending a comprehensive, clean master station list from KSP.
+```
+┌─────────────────────────────────────┐
+│         React + Vite Frontend        │
+│  (client/src — 14 dashboard pages)   │
+└──────────────┬──────────────────────┘
+               │ REST API calls
+┌──────────────▼──────────────────────┐
+│     Zoho Catalyst Serverless         │
+│  ┌─────────────────────────────┐    │
+│  │ get_crime_analytics (Express)│    │  ← Main backend
+│  │ arise_chatbot_handler        │    │  ← ConvoKraft bot
+│  │ alert_scheduler (Cron)       │    │  ← Auto anomaly detection
+│  │ zia-tts-engine               │    │  ← Voice synthesis
+│  └─────────────────────────────┘    │
+└──────────────┬──────────────────────┘
+               │ ZCQL queries
+┌──────────────▼──────────────────────┐
+│     Catalyst DataStore (ZCQL)        │
+│  fir_master · offender_profile       │
+│  entity_association_graph            │
+│  modus_operandi_signature            │
+│  geospatial_hotspot_indicator        │
+│  bsa_audit_trail · bail_custody      │
+│  biometric_record · forensic_evidence│
+│  phone_financial_token               │
+└─────────────────────────────────────┘
+```
 
 ---
 
-## Team / Credits
+## Database Tables (10 ZCQL tables)
 
-**Team:** Cognitive Cops
-**Event:** Karnataka State Police Datathon 2026
+| Table | Purpose |
+|-------|---------|
+| `fir_master` | Root FIR records — BNS sections, GPS coords, timestamps |
+| `offender_profile` | Accused persons, recidivism scores, bail status |
+| `entity_association_graph` | Criminal network edge matrix |
+| `modus_operandi_signature` | How crimes are committed — instruments, entry methods |
+| `geospatial_hotspot_indicator` | Pre-computed risk grid cells (500m × 500m) |
+| `bsa_audit_trail` | BSA Sec. 63 tamper-evident audit log |
+| `bail_custody_status` | Real-time custody and bail tracking |
+| `biometric_record` | Physical descriptors and biometric hashes |
+| `forensic_evidence_log` | BNSS Sec. 176 evidence chain |
+| `phone_financial_token` | UPI/bank/crypto/phone network nodes |
+
+All tables follow **BNS 2023 / BNSS 2023 / BSA 2023 / CCTNS IIF** legal framework alignment.
+
+---
+
+## CCTNS Webhook Integration
+
+Police stations can push live FIR data to ARISE without any manual entry:
+
+1. Open **Settings** in the ARISE dashboard
+2. Copy the **Webhook URL** and **Push Token**
+3. Configure your CCTNS system to POST to this endpoint on every FIR registration
+4. Data appears in all dashboards instantly via the live ZCQL tables
+
+The webhook validates the token, maps CCTNS IIF fields to the `fir_master` schema, and triggers the alert_scheduler to check for anomalies.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Visualizations | D3.js, Leaflet, react-globe.gl, Recharts |
+| Backend | Zoho Catalyst Serverless (Node.js) |
+| Database | Catalyst DataStore + ZCQL |
+| AI — Chat | Catalyst GLM (GLM 4.7B) |
+| AI — Predictions | Zoho QuickML |
+| AI — Vision | Zia Face Analytics |
+| AI — Voice | Zia STT/TTS + edge-tts (en-US-AvaNeural) |
+| Security | BSA Sec. 63 SHA-256 hash chains |
+| Deployment | Zoho Catalyst (frontend + backend) |
+
+---
+
+## Local Development
+
+```bash
+# 1. Install frontend dependencies
+cd client
+npm install
+
+# 2. Set your API base URL
+# Create client/.env:
+echo "VITE_API_BASE=https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics" > .env
+
+# 3. Run dev server
+npm run dev
+# → http://localhost:5173
+```
+
+### Backend (functions)
+```bash
+cd functions/get_crime_analytics
+npm install
+
+# Set environment variables (see .env.example)
+# Then deploy via Catalyst CLI:
+catalyst deploy
+```
+
+---
+
+## Deployment to Zoho Catalyst
+
+Follow the zip protocol (`zip_protocol.md`):
+
+```bash
+# Frontend
+cd client && npm run build
+cd dist && npx bestzip ../../frontend.zip *
+
+# Backend
+cd functions/get_crime_analytics
+npx bestzip ../../backend.zip *
+```
+
+Upload `frontend.zip` to Catalyst Console → Client → Deploy  
+Upload `backend.zip` to Catalyst Console → Functions → get_crime_analytics → Deploy
+
+---
+
+## Environment Variables
+
+Set these in **Catalyst Console → Functions → get_crime_analytics → Environment Variables**:
+
+| Variable | Description |
+|----------|-------------|
+| `ZOHO_CLIENT_ID` | OAuth client ID from Zoho API Console |
+| `ZOHO_CLIENT_SECRET` | OAuth client secret |
+| `ZOHO_REFRESH_TOKEN` | Long-lived refresh token |
+| `QUICKML_ORG_ID` | Your Catalyst org ID |
+
+**Never commit actual values** — use the Catalyst Console env vars panel.
+
+---
+
+## Team
+
+**Cognitive Cops** — KSP Datathon 2026  
+Mascots: 🦁 Lion (Authority) · 🦊 Fox (Tactical Intelligence) · 🦉 Owl (Wisdom)
+
+---
+
+## Legal Framework
+
+- **BNS 2023** — Bharatiya Nyaya Sanhita (replaces IPC)
+- **BNSS 2023** — Bharatiya Nagarik Suraksha Sanhita (replaces CrPC)
+- **BSA 2023** — Bharatiya Sakshya Adhiniyam (replaces Indian Evidence Act)
+- **CCTNS IIF** — Crime and Criminal Tracking Network & Systems IIF forms

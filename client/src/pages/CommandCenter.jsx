@@ -10,7 +10,42 @@ import { MapPin, Clock, FileText, AlertCircle, Fingerprint, Users } from 'lucide
 import { STATION_LOCATIONS } from '../data/stationLocations';
 import ZiaOrb from '../components/ZiaOrb';
 
-const PIE_COLORS = ['#00e5ff', '#8b5cf6', '#f43f5e', '#10b981', '#f59e0b', '#64748b'];
+const PIE_COLORS = ['#5EF7A6', '#54A388', '#f43f5e', '#43256E', '#f59e0b', '#64748b'];
+
+const AnomalyTicker = () => {
+  const [anomalies, setAnomalies] = React.useState(null);
+  React.useEffect(() => {
+    fetch((import.meta.env.VITE_API_BASE || 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics') + '/api/analytics/anomalies')
+      .then(r => r.json())
+      .then(d => {
+        if(d.success) setAnomalies(d.data);
+      }).catch(e => console.error(e));
+  }, []);
+
+  if (!anomalies) return null;
+
+  return (
+    <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', animation: 'pulse 3s infinite' }}>
+      <AlertCircle size={20} className="text-red-500" />
+      <div style={{ display: 'flex', gap: '24px', overflowX: 'hidden', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#fca5a5', fontWeight: 600 }}>SYSTEM ANOMALIES DETECTED:</span>
+        {anomalies.financial_outliers?.length > 0 && (
+          <span style={{ color: '#fff' }}>[Financial Risk] {anomalies.financial_outliers.length} incidents found with unusually high surety amounts (&gt; â‚¹5M) - possible hawala/syndicate links.</span>
+        )}
+        {anomalies.temporal_outliers?.map((t, i) => (
+          <span key={i} style={{ color: '#fff' }}>[{t.type}] {t.description}</span>
+        ))}
+      </div>
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 // Simplified HeatmapLayer for Risk Zones
 const HeatmapLayer = ({ heatData }) => {
@@ -22,7 +57,7 @@ const HeatmapLayer = ({ heatData }) => {
       const points = heatData.map(cell => [cell.lat, cell.lng, cell.weight]);
       heatLayer = L.heatLayer(points, {
         radius: 35, blur: 20, maxZoom: 12, max: 1.0,
-        gradient: { 0.0: '#1e3a5f', 0.4: '#00e5ff', 0.7: '#f59e0b', 1.0: '#f43f5e' }
+        gradient: { 0.0: 'rgba(22,19,22,0.8)', 0.4: '#43256E', 0.7: '#54A388', 1.0: '#5EF7A6' }
       });
       heatLayer.addTo(map);
     });
@@ -131,19 +166,35 @@ export default function CommandCenter() {
       const addPoint = (title, desc) => {
         pdf.setTextColor(0, 229, 255);
         pdf.setFont(undefined, 'bold');
-        pdf.text(`• ${title}:`, 16, currentY);
+        pdf.text(`- ${title}:`, 16, currentY);
         pdf.setTextColor(226, 232, 240);
         pdf.setFont(undefined, 'normal');
-        
         const textLines = pdf.splitTextToSize(desc, pdfWidth - 36);
-        pdf.text(textLines, 16 + pdf.getTextWidth(`• ${title}: `), currentY);
+        pdf.text(textLines, 16 + pdf.getTextWidth(`- ${title}: `), currentY);
         currentY += (textLines.length * 6) + 4;
       };
 
-      addPoint("Resource Allocation", `Shift patrol units to high-risk zones identified in the analogical heatmap, particularly focusing on the clusters in the central districts.`);
-      addPoint("Targeted Operations", `Incident trends show an elevated volume of BNS-303 and BNS-318. Recommend initiating targeted operations to dismantle organized syndicates operating in these domains.`);
-      addPoint("Temporal Deployment", `The temporal analysis shows distinct peaks in the late evening. Recommend overlapping shift changes to ensure maximum coverage during these high-incident timeslots.`);
-      addPoint("Repeat Offenders", `We have ${d.kpis?.repeatOffenders || 0} active repeat offenders currently tracked. Proactive monitoring and parole checks should be prioritized in their registered localities.`);
+      // Fetch real AI recommendations for PDF
+      let aiRecs = [];
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE || 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics';
+        const recRes = await fetch(`${baseUrl}/api/hotspots/resource-deploy?district=ALL`);
+        if (recRes.ok) {
+          const recJson = await recRes.json();
+          aiRecs = recJson.data?.recommendations || [];
+        }
+      } catch (_) {}
+
+      if (aiRecs.length > 0) {
+        aiRecs.slice(0, 4).forEach(rec => {
+          addPoint(rec.zone || rec.district || 'Zone', rec.recommendation || rec.action || 'Deploy additional patrol resources.');
+        });
+      } else {
+        addPoint("Resource Allocation", `Shift patrol units to high-risk zones. Total cases tracked: ${d.kpis?.totalFIRs || 0}. Open cases: ${d.kpis?.openCases || 0}.`);
+        addPoint("Targeted Operations", `Incident trends show elevated BNS crime volumes. Recommend targeted operations in the top districts identified in the analytics.`);
+        addPoint("Temporal Deployment", `The temporal analysis shows distinct peaks in the late evening. Recommend overlapping shift changes for maximum coverage.`);
+        addPoint("Repeat Offenders", `${d.kpis?.repeatOffenders || 0} active repeat offenders are currently tracked. Proactive monitoring and parole checks should be prioritized.`);
+      }
 
       // 5. Save the PDF safely using a Blob object URL
       const pdfBlob = pdf.output('blob');
@@ -206,19 +257,14 @@ export default function CommandCenter() {
     return null;
   };
 
-  const CardHeader = ({ title, dropdown = false }) => (
+  const CardHeader = ({ title }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
       <div style={{ fontSize: '14px', fontWeight: 500, color: '#fff', letterSpacing: '0.02em' }}>{title}</div>
-      {dropdown && (
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
-          AI Crime <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
-      )}
     </div>
   );
 
   return (
-    <div ref={dashboardRef} className="arise-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px', background: '#000' }}>
+    <div ref={dashboardRef} className="arise-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
       
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -232,20 +278,22 @@ export default function CommandCenter() {
         </div>
       </div>
 
+      <AnomalyTicker />
+
       {/* TOP COMMAND CENTER LAYER */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '32px', alignItems: 'center' }}>
         
         {/* Left KPIs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="arise-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00e5ff' }}><FileText size={24} /></div>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(94, 247, 166, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5EF7A6', boxShadow: 'inset 0 0 10px rgba(94, 247, 166, 0.1)' }}><FileText size={24} /></div>
             <div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Cases</div>
               <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>{d.kpis?.totalFIRs || 0}</div>
             </div>
           </div>
           <div className="arise-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}><AlertCircle size={24} /></div>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e', boxShadow: 'inset 0 0 10px rgba(244, 63, 94, 0.1)' }}><AlertCircle size={24} /></div>
             <div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Open Cases</div>
               <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>{d.kpis?.openCases || 0}</div>
@@ -261,14 +309,14 @@ export default function CommandCenter() {
         {/* Right KPIs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="arise-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}><Fingerprint size={24} /></div>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(84, 163, 136, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54A388', boxShadow: 'inset 0 0 10px rgba(84, 163, 136, 0.1)' }}><Fingerprint size={24} /></div>
             <div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Forensic Cases</div>
               <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>{d.kpis?.forensicCases || 0}</div>
             </div>
           </div>
           <div className="arise-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Users size={24} /></div>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', boxShadow: 'inset 0 0 10px rgba(245, 158, 11, 0.1)' }}><Users size={24} /></div>
             <div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Repeat Offenders</div>
               <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>{d.kpis?.repeatOffenders || 0}</div>
@@ -284,11 +332,11 @@ export default function CommandCenter() {
           
           {/* Panel 1: Crime Trends (Dynamic Color BarChart) */}
           <div className="arise-card" style={{ padding: '20px', height: '340px' }}>
-            <CardHeader title="Crime Trends (by District)" dropdown />
-            <ResponsiveContainer width="100%" height="100%" style={{ paddingBottom: '20px' }}>
-              <BarChart data={districtChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CardHeader title="Crime Trends (by District)" />
+            <ResponsiveContainer width="100%" height="100%" style={{ paddingBottom: '30px' }}>
+              <BarChart data={districtChartData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="district_name" interval={0} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="district_name" interval={0} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" height={55} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -303,9 +351,9 @@ export default function CommandCenter() {
 
           {/* Panel 2: Incident Categories (Red Area Chart) */}
           <div className="arise-card glowing-area-red" style={{ padding: '20px', height: '280px' }}>
-            <CardHeader title="Incident Categories" dropdown />
-            <ResponsiveContainer width="100%" height="100%" style={{ paddingBottom: '20px' }}>
-              <AreaChart data={sectionChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CardHeader title="Incident Categories" />
+            <ResponsiveContainer width="100%" height="100%" style={{ paddingBottom: '30px' }}>
+              <AreaChart data={sectionChartData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
                 <defs>
                   <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
@@ -313,7 +361,7 @@ export default function CommandCenter() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="bns_primary_section" interval={0} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="bns_primary_section" interval={0} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" height={55} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                 <Area type="step" dataKey="count" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#redGradient)" />
@@ -330,7 +378,7 @@ export default function CommandCenter() {
                 <XAxis dataKey="name" interval={0} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                <Bar dataKey="count" fill="#00e5ff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#5EF7A6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -359,7 +407,7 @@ export default function CommandCenter() {
                 attributionControl={false}
               >
                 <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {heatData.slice(0, 50).map((pt, i) => (
                   <Marker 
@@ -372,9 +420,9 @@ export default function CommandCenter() {
             </div>
           </div>
 
-          {/* Panel 5: Predictive Analysis */}
+          {/* Panel 5: Crime Category Breakdown */}
           <div className="arise-card" style={{ padding: '20px', height: '280px', display: 'flex', flexDirection: 'column' }}>
-            <CardHeader title="Predictive Analysis" dropdown />
+            <CardHeader title="Crime Category Breakdown" />
             <div style={{ flex: 1, position: 'relative', marginTop: '10px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -409,7 +457,7 @@ export default function CommandCenter() {
                 scrollWheelZoom={false}
                 doubleClickZoom={false}
               >
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png" />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <HeatmapLayer heatData={heatData} />
               </MapContainer>
             </div>
@@ -426,7 +474,7 @@ export default function CommandCenter() {
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#fff', margin: '0 0 16px 0' }}>Crime Ranking (Top Districts)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {districtChartData.slice(0, 5).map((dist, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'transparent', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>{i + 1}</div>
                   <div style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{dist.district_name}</div>
@@ -444,16 +492,16 @@ export default function CommandCenter() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
             {processedFIRs.slice(0, 5).map((fir, i) => (
-              <div key={i} style={{ padding: '12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div key={i} style={{ padding: '12px', background: 'transparent', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ fontSize: '13px', color: 'var(--cyan)', fontWeight: 500 }}>{fir.fir_no || fir.fir_uid}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Clock size={12} /> {new Date(fir.fir_date).toLocaleDateString()}
+                    <Clock size={12} /> {fir.fir_registration_datetime ? new Date(fir.fir_registration_datetime).toLocaleDateString('en-IN') : (fir.fir_date ? new Date(fir.fir_date).toLocaleDateString('en-IN') : 'N/A')}
                   </div>
                 </div>
                 <div style={{ fontSize: '14px', color: '#fff' }}>{fir.bns_primary_section}</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <MapPin size={12} /> {fir.district_name} ({fir.police_station})
+                  <MapPin size={12} /> {fir.district_name}{fir.police_station ? ` Â· ${fir.police_station}` : ''}
                 </div>
               </div>
             ))}
@@ -468,3 +516,4 @@ export default function CommandCenter() {
     </div>
   );
 }
+
