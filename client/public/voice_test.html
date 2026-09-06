@@ -1,0 +1,381 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE Voice Test - Kannada &amp; English</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #041226 0%, #0a1e3d 100%);
+      color: #f4f4f6; min-height: 100vh; padding: 20px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .container {
+      max-width: 820px; width: 100%;
+      background: rgba(15,23,42,0.8);
+      border: 1px solid rgba(0,229,255,0.3); border-radius: 16px;
+      padding: 32px; box-shadow: 0 8px 32px rgba(0,119,255,0.2);
+      backdrop-filter: blur(20px);
+    }
+    h1 {
+      font-size: 26px; font-weight: 600; margin-bottom: 6px;
+      background: linear-gradient(135deg,#00e5ff,#0077ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+    .subtitle { text-align:center; color:#94a3b8; font-size:13px; margin-bottom:28px; }
+    .section {
+      background: rgba(30,41,59,0.5); border: 1px solid rgba(100,116,139,0.3);
+      border-radius: 12px; padding: 18px; margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 14px; font-weight: 600; color: #00e5ff; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .voice-selector {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(145px,1fr));
+      gap: 10px; margin-bottom: 4px;
+    }
+    .voice-option {
+      background: rgba(30,41,59,0.8); border: 2px solid rgba(100,116,139,0.3);
+      border-radius: 8px; padding: 11px; cursor: pointer; transition: all 0.2s;
+      text-align: center;
+    }
+    .voice-option:hover { border-color: rgba(0,229,255,0.5); background: rgba(30,41,59,1); }
+    .voice-option.active { border-color: #00e5ff; background: rgba(0,229,255,0.1); }
+    .voice-name { font-weight:600; font-size:13px; margin-bottom:3px; color:#f4f4f6; }
+    .voice-detail { font-size:10px; color:#94a3b8; }
+    .control-row { display:flex; gap:10px; margin-bottom:12px; }
+    button {
+      flex: 1; padding: 12px 16px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .btn-primary { background: linear-gradient(135deg,#00e5ff,#0077ff); color:#041226; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,229,255,0.4); }
+    .btn-primary:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
+    .btn-danger { background:rgba(239,68,68,0.18); border:1px solid rgba(239,68,68,0.45); color:#ef4444; }
+    .btn-danger:hover { background:rgba(239,68,68,0.28); }
+    .btn-secondary {
+      flex: none; padding: 10px 18px; background: rgba(167,139,250,0.15);
+      border: 1px solid rgba(167,139,250,0.4); color: #a78bfa; font-size: 13px;
+      font-weight: 600; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-secondary:hover { background: rgba(167,139,250,0.25); }
+    .status {
+      padding: 11px 14px; border-radius: 8px; font-size: 13px;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .status.listening {
+      background:rgba(239,68,68,0.18); border:1px solid rgba(239,68,68,0.45); color:#ef4444;
+      animation: pulse 1.5s infinite;
+    }
+    .status.speaking { background:rgba(0,229,255,0.18); border:1px solid rgba(0,229,255,0.45); color:#00e5ff; }
+    .status.thinking { background:rgba(167,139,250,0.15); border:1px solid rgba(167,139,250,0.35); color:#a78bfa; }
+    .status.idle { background:rgba(100,116,139,0.18); border:1px solid rgba(100,116,139,0.3); color:#94a3b8; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    .transcript {
+      background:rgba(15,23,42,0.8); border:1px solid rgba(100,116,139,0.3);
+      border-radius:8px; padding:14px; min-height:110px; font-size:13px;
+      line-height:1.6; color:#e2e8f0; overflow-y:auto; max-height:280px;
+    }
+    .transcript-label { font-size:11px; font-weight:600; color:#94a3b8; text-transform:uppercase; margin-bottom:7px; letter-spacing:0.5px; }
+    .message { margin-bottom:10px; padding:9px 12px; border-radius:8px; font-size:13px; line-height:1.5; }
+    .message.user { background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; color:#fef3c7; }
+    .message.assistant { background:rgba(0,229,255,0.09); border-left:3px solid #00e5ff; color:#cffafe; }
+    .message-label { font-size:10px; font-weight:600; text-transform:uppercase; opacity:0.65; margin-bottom:3px; }
+    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .setting { display:flex; flex-direction:column; gap:5px; }
+    .setting-label { font-size:11px; color:#94a3b8; font-weight:500; }
+    input[type="text"], textarea {
+      background:rgba(15,23,42,0.8); border:1px solid rgba(100,116,139,0.3);
+      border-radius:6px; padding:9px 11px; color:#f4f4f6; font-size:13px;
+      font-family:'Consolas',monospace; width:100%;
+    }
+    textarea { resize:vertical; min-height:64px; font-family:'Noto Sans Kannada','Segoe UI',sans-serif; }
+    input[type="text"]:focus, textarea:focus { outline:none; border-color:#00e5ff; }
+    .indicator { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    .indicator.green { background:#4ade80; }
+    .indicator.red { background:#ef4444; }
+    .indicator.blue { background:#00e5ff; }
+    .indicator.violet { background:#a78bfa; }
+    .indicator.gray { background:#64748b; }
+    .tts-row { display:flex; gap:10px; align-items:flex-end; }
+    .tts-row textarea { flex:1; }
+    .quick-texts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .quick-btn {
+      padding:5px 11px; border-radius:20px; font-size:11px; font-weight:600;
+      cursor:pointer; border:1px solid rgba(0,229,255,0.35);
+      background:rgba(0,229,255,0.08); color:#7dd3fc;
+      transition:all 0.15s; white-space:nowrap;
+    }
+    .quick-btn:hover { background:rgba(0,229,255,0.18); border-color:#00e5ff; }
+    .quick-btn.kn { border-color:rgba(167,139,250,0.45); background:rgba(167,139,250,0.1); color:#c4b5fd; }
+    .quick-btn.kn:hover { background:rgba(167,139,250,0.22); }
+    .divider { width:100%; height:1px; background:rgba(100,116,139,0.25); margin:4px 0 12px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>&#127897;&#65039; ARISE Voice Test</h1>
+  <p class="subtitle">Test Kannada &amp; English voices — works with your deployed Catalyst backend</p>
+
+  <!-- Voice Selection -->
+  <div class="section">
+    <div class="section-title"><span class="indicator blue"></span> Select Voice</div>
+    <div class="voice-selector">
+      <div class="voice-option active" data-voice="en-US-AvaNeural" data-lang="en">
+        <div class="voice-name">&#127482;&#127480; Ava (EN)</div>
+        <div class="voice-detail">English Female &bull; Natural</div>
+      </div>
+      <div class="voice-option" data-voice="en-US-BrianNeural" data-lang="en">
+        <div class="voice-name">&#127482;&#127480; Brian (EN)</div>
+        <div class="voice-detail">English Male &bull; Professional</div>
+      </div>
+      <div class="voice-option" data-voice="en-US-AriaNeural" data-lang="en">
+        <div class="voice-name">&#127482;&#127480; Aria (EN)</div>
+        <div class="voice-detail">English Female &bull; Clear</div>
+      </div>
+      <div class="voice-option" data-voice="kn-IN-SapnaNeural" data-lang="kn">
+        <div class="voice-name">&#127470;&#127475; &#3256;&#3270;&#3256;&#3277;&#3240; (KN-F)</div>
+        <div class="voice-detail">Kannada Female &bull; Sapna</div>
+      </div>
+      <div class="voice-option" data-voice="kn-IN-GaganNeural" data-lang="kn">
+        <div class="voice-name">&#127470;&#127475; &#3261;&#3261;&#3240; (KN-M)</div>
+        <div class="voice-detail">Kannada Male &bull; Gagan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Direct TTS Test (no mic needed) -->
+  <div class="section">
+    <div class="section-title"><span class="indicator violet"></span> Test TTS Directly (no mic needed)</div>
+    <div class="tts-row">
+      <textarea id="ttsText" placeholder="Type any text here and click Speak to test the selected voice..."></textarea>
+      <button class="btn-secondary" onclick="testDirectTTS()">&#128266; Speak</button>
+    </div>
+    <div class="quick-texts">
+      <span class="quick-btn" onclick="setAndSpeak('Show me recent FIRs in Bengaluru Urban district.')">EN: Recent FIRs</span>
+      <span class="quick-btn" onclick="setAndSpeak('There are 3 active hotspots detected in Bengaluru Urban with high crime activity.')">EN: Hotspot alert</span>
+      <span class="quick-btn" onclick="setAndSpeak('ARISE Crime Intelligence Platform is now active. All systems operational.')">EN: System status</span>
+      <span class="quick-btn kn" onclick="setAndSpeak('&#3253;&#3250;&#3277;&#3262;&#3240;&#3250;&#3262; &#3240;&#3240;&#3260;&#3248;&#3274; FIR &#3235;&#3250;&#3277;&#3251;&#3244;&#3263; &#3255;&#3215;&#3246;&#3277;&#3239;&#3250;&#3273;&#3249;&#3266;&#3263;&#3250;&#3263;.')">KN: ಇತ್ತೀಚಿನ FIR</span>
+      <span class="quick-btn kn" onclick="setAndSpeak('&#3261;&#3280;&#3240;&#3277;&#3222;&#3245;&#3263;&#3248;&#3274;&#3248;&#3274; &#3252;&#3220;&#3250;&#3277; &#3252;&#3267;&#3220;&#3253;&#3265;&#3254; &#3253;&#3246;&#3277;&#3239;&#3250;&#3262;&#3221;&#3263;&#3253;&#3274;.')">KN: ಹಾಟ್ಸ್ಪಾಟ್ ಎಚ್ಚರಿಕೆ</span>
+      <span class="quick-btn kn" onclick="setAndSpeak('ARISE &#3234;&#3256;&#3277;&#3250;&#3239; &#3217;&#3240;&#3277;&#3245;&#3253;&#3277;&#3253;&#3271;&#3244;&#3274; &#3270;&#3239;&#3263;&#3260;&#3247; &#3256;&#3265;&#3240;&#3277;&#3215;&#3267;&#3230;&#3265;&#3263;.')">KN: ಸಿಸ್ಟಮ್ ಸ್ಥಿತಿ</span>
+    </div>
+  </div>
+
+  <!-- API Settings -->
+  <div class="section">
+    <div class="section-title"><span class="indicator gray"></span> Backend API Configuration</div>
+    <div class="settings-grid">
+      <div class="setting">
+        <label class="setting-label">TTS Endpoint</label>
+        <input type="text" id="ttsEndpoint" value="https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics/api/tts" />
+      </div>
+      <div class="setting">
+        <label class="setting-label">Chat Endpoint</label>
+        <input type="text" id="chatEndpoint" value="https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics/api/chatbot/query" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div id="status" class="status idle">
+    <span class="indicator gray"></span>
+    <span id="statusText">Ready &mdash; Type text above to test TTS, or use mic to converse</span>
+  </div>
+
+  <!-- Mic Controls -->
+  <div class="section">
+    <div class="section-title"><span class="indicator green"></span> Mic Voice Conversation</div>
+    <div class="control-row">
+      <button id="startBtn" class="btn-primary">&#127908; Start Listening</button>
+      <button id="stopBtn" class="btn-danger" style="display:none;">&#9209;&#65039; Stop</button>
+      <button class="btn-danger" onclick="clearTranscript()" style="flex:0.4;">&#128465;&#65039; Clear</button>
+    </div>
+  </div>
+
+  <!-- Conversation Transcript -->
+  <div class="section">
+    <div class="section-title"><span class="indicator blue"></span> Conversation Transcript</div>
+    <div class="transcript-label">Live conversation history</div>
+    <div id="transcript" class="transcript">
+      <div style="text-align:center;color:#64748b;padding:16px;" id="emptyMsg">
+        No messages yet. Type text above to test a voice, or click "Start Listening" to converse.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BASE = 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics';
+
+  let selectedVoice = 'en-US-AvaNeural';
+  let selectedLang  = 'en';
+  let recognition   = null;
+  let isListening   = false;
+  let currentAudio  = null;
+
+  const startBtn    = document.getElementById('startBtn');
+  const stopBtn     = document.getElementById('stopBtn');
+  const statusEl    = document.getElementById('status');
+  const statusText  = document.getElementById('statusText');
+  const transcriptEl= document.getElementById('transcript');
+  const ttsEndpointEl = document.getElementById('ttsEndpoint');
+  const chatEndpointEl= document.getElementById('chatEndpoint');
+
+  // ── Voice selection ──
+  document.querySelectorAll('.voice-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.voice-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      selectedVoice = opt.dataset.voice;
+      selectedLang  = opt.dataset.lang;
+      const name = opt.querySelector('.voice-name').textContent;
+      updateStatus('idle', 'Voice selected: ' + name + ' — ready to speak');
+    });
+  });
+
+  // ── Direct TTS test ──
+  function setAndSpeak(text) {
+    document.getElementById('ttsText').value = text;
+    testDirectTTS();
+  }
+
+  async function testDirectTTS() {
+    const text = document.getElementById('ttsText').value.trim();
+    if (!text) { updateStatus('idle', 'Please type some text first'); return; }
+    addMessage('user', '[TTS test] ' + text);
+    await speakText(text);
+  }
+
+  // ── Chat + TTS ──
+  async function handleUserMessage(message) {
+    updateStatus('thinking', '&#129504; Thinking...');
+    try {
+      const res = await fetch(chatEndpointEl.value, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, language: selectedLang, history: [] })
+      });
+      if (!res.ok) throw new Error('Chat API ' + res.status);
+      const data = await res.json();
+      const reply = data.data?.response || data.response || 'Sorry, no response.';
+      addMessage('assistant', reply);
+      await speakText(reply);
+    } catch (err) {
+      addMessage('assistant', 'Error: ' + err.message);
+      updateStatus('idle', 'Chat error — ' + err.message);
+    }
+  }
+
+  // ── TTS ──
+  async function speakText(text) {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    updateStatus('speaking', '&#128266; Speaking with ' + selectedVoice + '...');
+    try {
+      const res = await fetch(ttsEndpointEl.value, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: selectedVoice, language: selectedLang })
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error('TTS ' + res.status + ': ' + err.slice(0, 120));
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      currentAudio.onended = () => {
+        updateStatus('idle', 'Done speaking — ready for next test');
+        URL.revokeObjectURL(url); currentAudio = null;
+      };
+      currentAudio.onerror = () => {
+        updateStatus('idle', 'Audio playback error');
+        URL.revokeObjectURL(url); currentAudio = null;
+      };
+      await currentAudio.play();
+    } catch (err) {
+      updateStatus('idle', 'TTS error: ' + err.message);
+      console.error('TTS error:', err);
+    }
+  }
+
+  // ── Speech recognition ──
+  function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition not supported. Please use Google Chrome.'); return false;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = selectedLang === 'kn' ? 'kn-IN' : 'en-US';
+
+    recognition.onstart = () => {
+      isListening = true;
+      updateStatus('listening', '&#127908; Listening... speak now');
+      startBtn.style.display = 'none'; stopBtn.style.display = 'block';
+    };
+    recognition.onresult = e => {
+      const said = e.results[0][0].transcript;
+      addMessage('user', said);
+      handleUserMessage(said);
+    };
+    recognition.onerror = e => {
+      updateStatus('idle', 'Mic error: ' + e.error);
+      resetButtons();
+    };
+    recognition.onend = () => { isListening = false; resetButtons(); };
+    return true;
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (!recognition && !initSpeechRecognition()) return;
+    recognition.lang = selectedLang === 'kn' ? 'kn-IN' : 'en-US';
+    recognition.start();
+  });
+  stopBtn.addEventListener('click', () => {
+    if (recognition) recognition.stop();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    updateStatus('idle', 'Stopped'); resetButtons();
+  });
+
+  // ── Helpers ──
+  function updateStatus(state, text) {
+    statusEl.className = 'status ' + state;
+    statusText.innerHTML = text;
+    const dot = statusEl.querySelector('.indicator');
+    dot.className = 'indicator';
+    if (state === 'listening') dot.classList.add('red');
+    else if (state === 'speaking') dot.classList.add('blue');
+    else if (state === 'thinking') dot.classList.add('violet');
+    else dot.classList.add('gray');
+  }
+
+  function addMessage(role, content) {
+    const empty = document.getElementById('emptyMsg');
+    if (empty) empty.remove();
+    const div = document.createElement('div');
+    div.className = 'message ' + role;
+    div.innerHTML = '<div class="message-label">' +
+      (role === 'user' ? '&#128100; You' : '&#129302; ARISE AI') +
+      '</div><div>' + content.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+    transcriptEl.appendChild(div);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function clearTranscript() {
+    transcriptEl.innerHTML = '<div style="text-align:center;color:#64748b;padding:16px;" id="emptyMsg">Cleared. Ready for next test.</div>';
+  }
+
+  function resetButtons() {
+    startBtn.style.display = 'block'; stopBtn.style.display = 'none';
+    if (statusEl.classList.contains('listening'))
+      updateStatus('idle','Ready');
+  }
+</script>
+</body>
+</html>

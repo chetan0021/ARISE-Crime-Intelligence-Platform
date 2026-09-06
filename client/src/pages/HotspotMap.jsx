@@ -84,9 +84,9 @@ const PulsingMarker = ({ lat, lng, riskTier, cellData, t }) => {
           )}
           <strong style={{ color: 'var(--red)', fontSize: '13px' }}>⚠ {t('hm.emerging')}</strong>
           <div style={{ marginTop: '4px', fontSize: '12px', color: '#09090b', fontWeight: 600 }}>{cellData.policeStation}</div>
-          <div style={{ marginTop: '8px', fontSize: '11px' }}><strong>Dominant:</strong> {cellData.dominantCrime}</div>
+          <div style={{ marginTop: '8px', fontSize: '11px' }}><strong>{t('hm.dominant')}:</strong> {cellData.dominantCrime}</div>
           <div style={{ marginTop: '4px', fontSize: '11px' }}>
-            <span style={{ color: 'var(--red)' }}>7d count: {cellData.count7d}</span> | 30d avg: {Math.round(cellData.count30d / 4)}
+            <span style={{ color: 'var(--red)' }}>{t('hm.count7d')}: {cellData.count7d}</span> | {t('hm.avg30d')}: {Math.round(cellData.count30d / 4)}
           </div>
         </div>
       </Popup>
