@@ -1,10 +1,181 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useZia } from '../context/ZiaContext';
 import { Mic } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics';
+
+function stripLLMThinking(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let t = raw;
+
+  t = t.replace(/<think[\s\S]*?<\/think>/gi, ' ');
+  t = t.replace(/```think[\s\S]*?```/gi, ' ');
+
+  const lines = t.split(/\r?\n/);
+  const kept = [];
+  let inBulkReasoningBlock = false;
+
+  const REASONING_BLOCK_HEADERS = [
+    /^\*?\*?Thinking\b/i,
+    /^\*?\*?Thought\b/i,
+    /^\*?\*?Reasoning\b/i,
+    /^\*?\*?Analysis\b/i,
+    /^\*?\*?Plan\b/i,
+    /^\*?\*?Steps?\b/i,
+    /^\*?\*?Approach\b/i,
+    /^\*?\*?Strategy\b/i,
+    /^\*?\*?Let me (think|analyze|understand|verify|check|process|look|search|find|confirm|review|reason)\b/i,
+    /^\*?\*?Okay,?\s+(let|now|so)\b/i,
+    /^\*?\*?First,?\s+(let|I)\b/i,
+    /^\*?\*?The user (said|asked|is asking|wants|is trying|is requesting)\b/i,
+    /^\*?\*?User (said|asked|query|request|question):?\b/i,
+    /^Analyze\s+(the\s+)?(Request|Query|Question|Input|User|Task|Prompt)\s*:?\s*$/i,
+    /^(Scan|Search|Inspect|Review|Explore|Check)\s+(the\s+)?(Database|Context|Data|Records|Table|List|Schema|Fields?|History)\s*:?\s*$/i,
+    /^(Filter|Selection|Match|Join|Map|Merge|Cross-?[Rr]ef(?:erence)?|Lookup|Search|Query)\s+(Logic|Plan|Strategy|Steps?|Condition|Rule|Criteria|Approach)\s*:?\s*$/i,
+    /^(Constraint|Limitation|Requirement|Boundary|Rule|Validation|Safety|Guardrail)\s*(Check|Match|Test|Condition)?\s*:?\s*$/i,
+    /^(Alternative|Fallback|Backup|Secondary|Option|Alternate)\s+(Strategy|Plan|Approach|Method|Solution)\s*:?\s*$/i,
+    /^(Observation|Finding|Note|Insight|Discovery|Result|Summary|Conclusion|Reasoning)\s*(s)?\s*:?\s*$/i,
+    /^(Target|Goal|Objective|Output|Deliverable|Result|Intent|Purpose|Task|Action)\s*:?\s*$/i,
+    /^(Data\s+)?(Structure|Format|Schema|Mapping|Fields?|Columns?|Keys?|IDs?|Relations?|Relationships?|Model)\s*:?\s*$/i,
+    /^(Execution|Implementation|Application|Processing)\s+(Plan|Steps?|Logic|Flow|Order|Strategy)\s*:?\s*$/i,
+    /^(Language|Locale|Region|Format|Response\s+Type|Output\s+Format)\s*:?\s*$/i
+  ];
+
+  const META_HEADERS = [
+    /^\*?\*?Role\b/i,
+    /^\*?\*?Identity\b/i,
+    /^\*?\*?Purpose\b/i,
+    /^\*?\*?Constraint\b/i,
+    /^\*?\*?Security\b/i,
+    /^\*?\*?Instruction\b/i,
+    /^\*?\*?System\b/i,
+    /^\*?\*?Context\b/i,
+    /^\*?\*?Task\b/i,
+    /^\*?\*?Goal\b/i,
+    /^\*?\*?Output\b/i,
+    /^\*?\*?Format\b/i
+  ];
+
+  const COLON_LABEL = /^(?<label>[A-Z][A-Za-z0-9 _\-/]{2,78})\s*:/;
+
+  const REASONING_LABEL_KEYWORDS = /\b(request|query|question|input|user|task|database|context|logic|steps?|plan|strategy|approach|check|condition|constraint|observation|finding|note|insight|target|goal|structure|schema|mapping|join|match|filter|selection|alternative|fallback|language|output|format|execution|processing|analysis|thinking|thought|reasoning|scan|search|review|explore|inspect|investigation|method|workflow|breakdown|decomposition|validation|implementation|application)\b/i;
+
+  function isColonTitledSection(lineTrimmed) {
+    if (REASONING_BLOCK_HEADERS.some(r => r.test(lineTrimmed))) return true;
+    if (META_HEADERS.some(r => r.test(lineTrimmed))) return true;
+    const m = lineTrimmed.match(COLON_LABEL);
+    if (!m) return false;
+    const label = m.groups.label.trim();
+    if (label.length < 3 || label.length > 70) return false;
+    const colonIdx = m.index + m[0].length;
+    const afterColon = lineTrimmed.slice(colonIdx).trim();
+    if (afterColon.length === 0) return REASONING_LABEL_KEYWORDS.test(label);
+    return REASONING_LABEL_KEYWORDS.test(label);
+  }
+
+  function isReasoningBodyNarrative(lineTrimmed) {
+    const tlc = lineTrimmed.toLowerCase();
+    return (
+      /^(let'?s|let me|let us)\b/i.test(lineTrimmed) ||
+      /^i\s+(need to|should|will|can|must|cannot|can't|won't|have to|want to|'ll)\b/i.test(lineTrimmed) ||
+      /^the\s+[a-z0-9_ ]{2,60}\s+(list|table|record|entry|field|column|object|array|dataset|data)\s+(contains|has|include|holds|store|provides|with|of|is|are|show)/i.test(lineTrimmed) ||
+      /^(the\s+)?(ids?|id|keys?|values?|fields?|columns?|rows?|names?)\b.*\b(match|align|correspond|map|join|relate|differ|vary|overlap|connect|link|associate)\b/i.test(lineTrimmed) ||
+      /^(since|because|as\s+|given\s+|however|but[,\s]|though|although|while|whereas|nonetheless|nevertheless|consequently|therefore|thus|hence|accordingly)\b/i.test(lineTrimmed) ||
+      /^(also|additionally|furthermore|moreover|besides|next|then|meanwhile|otherwise|instead|alternatively|separately)\b/i.test(lineTrimmed) ||
+      /^(these|those|such|this\s+(means|implies|suggests|shows|indicates|confirms)|that\s+(means|implies|suggests|shows|indicates|confirms))\b/i.test(lineTrimmed) ||
+      /^(note\s+that|observe\s+that|notice\s+that|recall\s+that|remember\s+that|consider\s+that|keep\s+in\s+mind)\b/i.test(lineTrimmed) ||
+      /^(observation|finding|note|insight|discovery|summary|conclusion|target|goal|constraint|limitation|condition|step|plan|approach|strategy|output|format|intent|purpose|action)\b\s*[:\-]/i.test(lineTrimmed) ||
+      /\b(the\s+)?(repeat\s+offenders?|bail\s+status|fir|accused|offender|district|hotspot|crime)\s+(list|table|record|data|dataset)\b/i.test(tlc) ||
+      /^[A-Z][A-Za-z0-9_]{2,60}\s+(has|contains|includes|stores|holds|lists|shows|provides|with|of)\b/i.test(lineTrimmed) ||
+      /^(After|Once|When|While|Before|As|Upon|Following|If)\b.*\b(I|we|one)\s+(will|should|must|need to|can|shall|may|might|could|'ll)\b/i.test(lineTrimmed)
+    );
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine;
+    const trimmed = line.trim();
+    if (!trimmed) { kept.push(''); continue; }
+
+    const isReasoningHeader = REASONING_BLOCK_HEADERS.some(r => r.test(trimmed));
+    const isMetaHeader = META_HEADERS.some(r => r.test(trimmed));
+    const isColonHeader = isColonTitledSection(trimmed);
+    if (isReasoningHeader || isMetaHeader || isColonHeader) {
+      inBulkReasoningBlock = true;
+      continue;
+    }
+
+    if (/^#{1,6}\s*(Thinking|Thought|Reasoning|Analysis|Plan|Steps?|Approach|Context|Strategy|Execution|Processing)\b/i.test(trimmed)) {
+      inBulkReasoningBlock = true;
+      continue;
+    }
+
+    const INLINE_SELF_TALK = [
+      /^(Okay,?\s+)?(so|now)\s+(I|let me)\b[^.!?]*?[.!?]?\s*$/i,
+      /^(Before answering,?\s+)?Let me (think|analyze|understand|verify|check|process|look into|search for|find|confirm|review|figure out|break down|reason through|reason|map|join|cross-?[Rr]ef(?:erence)?|inspect|examine|evaluate|compare|match)\b[^.!?]*?[.!?]?\s*$/i,
+      /^Before answering,?\s+let me\b[^.!?]*?[.!?]?\s*$/i,
+      /^The user (said|asked|is asking|is requesting|wants|would like|needs)\b[^.!?]*?[.!?]?\s*$/i,
+      /^User\b[^.!?]*?[.!?]?\s*$/i,
+      /^I\s+(need to|should|will|can|must|cannot|can't|won't|have to|want to)\s+(verify|check|analyze|think|review|examine|process|look|determine|confirm|find|identify|map|join|match|extract|gather|collect|fetch|query|search|compare|evaluate|assess|consider|apply|perform|implement|execute|build|construct|filter|select|choose|decide)\b.*$/i,
+      /^First,?\s+(I|let me)\s+(need to|should|will|can|must)?\s*(verify|check|analyze|think|review|examine|process|look|determine|confirm|find|identify|map|join|match|extract|gather|collect|fetch|query|search|compare|evaluate|assess|consider|apply|perform|implement|execute|filter|select|choose|decide)\b.*$/i,
+      /^Secondly?,?\s+(I|let me)\b[^.!?]*?[.!?]?\s*$/i,
+      /^Hmm\b[^.!?]*?[.!?]?\s*$/i,
+      /^Alright,?\s+(let me|I)\b[^.!?]*?[.!?]?\s*$/i,
+      /^Let'?s\s+(look\s+at|check|see|review|examine|analyze|consider|compare|evaluate|try|do|start|begin|think|assess|inspect|map|verify|confirm)\b/i,
+      /^I\s+see\b/i,
+      /^I\s+(think|believe|feel|suspect|guess|suppose|expect|imagine)\b/i,
+      /^This\s+(is|looks|seems|appears|feels)\s+(tricky|tricky\.|interesting|complex|complicated|simple|straightforward|important|critical|crucial|key)/i
+    ];
+    if (INLINE_SELF_TALK.some(r => r.test(trimmed))) continue;
+
+    const numberedMatch = trimmed.match(/^(\d+)[.)\]]\s+(.+)$/);
+    if (numberedMatch) {
+      const stepText = numberedMatch[2];
+      const REASONING_STEP_VERBS = /^(check|verify|analyze|think about|determine|review|examine|process|search for|find|look for|look up|query|fetch|gather|collect|understand|break down|identify|evaluate|assess|consider|note that|notice that|recall|remember|cross-check|cross check|map|join|match|inspect|compare|filter|select|extract|confirm|validate|scan|explore|aggregate|sort|rank|order|group|categorize|classify|cluster|prioritize|organize|structure|compile|summarize|format|present|build|construct|generate|produce|create)\b/i;
+      if (REASONING_STEP_VERBS.test(stepText)) continue;
+    }
+
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
+    if (bulletMatch) {
+      const stepText = bulletMatch[1];
+      const REASONING_BULLET = /^(check|verify|analyze|think about|determine|review|examine|process|search for|find|look for|query|fetch|gather|collect|understand|break down|identify|evaluate|assess|consider|note that|notice that|cross-check|cross check|map|join|match|inspect|compare|filter|select|extract|confirm|validate|scan|explore|aggregate|sort|rank|order|group|categorize|classify|cluster|prioritize|organize|structure|compile|summarize|format|present|build|construct|generate|produce|create)\b/i;
+      if (REASONING_BULLET.test(stepText)) continue;
+    }
+
+    if (inBulkReasoningBlock) {
+      const looksLikeMetaOrNarrative =
+        REASONING_BLOCK_HEADERS.some(r => r.test(trimmed)) ||
+        META_HEADERS.some(r => r.test(trimmed)) ||
+        isColonTitledSection(trimmed) ||
+        INLINE_SELF_TALK.some(r => r.test(trimmed)) ||
+        isReasoningBodyNarrative(trimmed);
+
+      if (!looksLikeMetaOrNarrative) {
+        inBulkReasoningBlock = false;
+      } else {
+        continue;
+      }
+    }
+
+    kept.push(line);
+  }
+
+  t = kept.join('\n');
+
+  t = t.replace(/\[(Thought|Reasoning|Analysis|Thinking|Note|Plan|Strategy)\s*[:\-][^\]]*\]/gi, ' ');
+  t = t.replace(/\(\s*(Let me|The user|Okay,? so|First,|Now I|I need|Let's|Let me|Observation|Note that|Consider)\b[^)]{4,200}\)/gi, ' ');
+
+  t = t.replace(/^(Observation|Finding|Note|Insight|Discovery|Target|Goal|Constraint|Condition|Strategy|Approach|Plan|Step|Intent|Purpose|Action|Language|Locale|Format|Output|Context|Data\s+Structure|Structure|Mapping|Join|Filter|Match|Selection|Thinking|Thought|Reasoning|Analysis|Execution|Processing|Validation|Implementation|Application|Workflow|Method|Breakdown|Decomposition|Investigation|Inspection|Exploration|Scan|Search|Review)\s*:\s*.{0,200}$/gim, '');
+  t = t.replace(/^[A-Z_\- ]{3,80}:\s*$/gm, '');
+
+  t = t.replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+
+  if (!t) {
+    t = raw.replace(/<think[\s\S]*?<\/think>/gi, ' ').replace(/```think[\s\S]*?```/gi, ' ').trim();
+  }
+  return t;
+}
 
 export default function ZiaOrb({ variant = 'default' }) {
   const { lang } = useLang();
@@ -143,17 +314,30 @@ export default function ZiaOrb({ variant = 'default' }) {
       if (!res.ok) {
         throw new Error(data.message || `HTTP ${res.status}`);
       }
-      const replyText = data.data?.response || data.reply || "I'm sorry, I couldn't process that.";
+      const rawReply = data.data?.response || data.reply || "I'm sorry, I couldn't process that.";
+      const replyText = stripLLMThinking(rawReply);
       
       setHistory(prev => [...prev.slice(-4), {role: 'user', content: queryText}, {role: 'assistant', content: replyText}]);
       setIsThinking(false);
 
-      // 2. Clean text for TTS
-      const cleanSpeechText = replyText
-        .replace(/[*_~`#]/g, '')
+      // 2. Clean text for TTS - strip markdown, emojis, limit length
+      let cleanSpeechText = stripLLMThinking(replyText)
+        .replace(/\|.*?\|/g, '')           // strip table rows
+        .replace(/[*_~`#|]/g, '')          // strip markdown symbols
         .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '')
         .replace(/>/g, '')
+        .replace(/\n+/g, '. ')
+        .replace(/\s{2,}/g, ' ')
         .trim();
+      // Fallback: if stripping left nothing, use first 300 chars of raw reply
+      if (!cleanSpeechText || cleanSpeechText.length < 5) {
+        cleanSpeechText = replyText.replace(/[*_~`#|]/g, '').trim().slice(0, 300);
+      }
+      // Limit to 700 chars so TTS completes cleanly
+      if (cleanSpeechText.length > 700) {
+        const cut = cleanSpeechText.lastIndexOf('.', 700);
+        cleanSpeechText = cut > 50 ? cleanSpeechText.slice(0, cut + 1) : cleanSpeechText.slice(0, 700);
+      }
 
       // 3. Fetch TTS audio
       // Bypassing Catalyst CORS preflight

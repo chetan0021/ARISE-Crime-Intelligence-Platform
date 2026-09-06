@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, BarChart3, MapPin, Users, Network, 
   TrendingUp, DollarSign, Search, FileText, Settings,
-  ChevronLeft, ChevronRight, Globe, Bot, ShieldCheck
+  ChevronLeft, ChevronRight, Globe, Bot, ShieldCheck, ScanLine
 } from 'lucide-react';
 import { useT } from '../i18n/useT';
 import { useLang } from '../context/LanguageContext';
 import { useRole } from '../context/RoleContext';
 import ZiaOrb from '../components/ZiaOrb';
 import GlobalBot from '../components/GlobalBot';
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://cognitivecops-60073718159.development.catalystserverless.in/server/get_crime_analytics';
 
 export default function DashboardShell() {
   const [expanded, setExpanded] = useState(true);
@@ -18,6 +20,30 @@ export default function DashboardShell() {
   const t = useT();
   const { lang, toggle } = useLang();
   const { currentRole } = useRole();
+
+  // Language toggle with voice announcement
+  const handleLangToggle = async () => {
+    const switchingToLang = lang === 'en' ? 'kn' : 'en'
+    const announcementText = switchingToLang === 'kn'
+      ? '\u0c95\u0ca8\u0ccd\u0ca8\u0ca1\u0c95\u0ccd\u0c95\u0cc6 \u0cb8\u0ccd\u0cb5\u0cbe\u0c97\u0ca4'
+      : 'Switched to English'
+    const voice = switchingToLang === 'kn' ? 'kn-IN-SapnaNeural' : 'en-US-AvaNeural'
+    toggle()
+    try {
+      const res = await fetch(`${API_BASE}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: announcementText, language: switchingToLang, voice })
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+        audio.onended = () => URL.revokeObjectURL(url)
+        audio.play().catch(() => {})
+      }
+    } catch (e) { /* TTS failure is non-critical */ }
+  }
 
   // Trigger page-enter animation on route change
   useEffect(() => {
@@ -49,6 +75,7 @@ export default function DashboardShell() {
       items: [
         { path: '/dashboard/network', icon: Network, label: t('nav.networkAnalysis') },
         { path: '/dashboard/offenders', icon: Users, label: t('nav.offenderIntelligence') },
+        { path: '/dashboard/face-analytics', icon: ScanLine, label: t('nav.faceAnalytics') },
         { path: '/dashboard/predictions', icon: TrendingUp, label: t('nav.predictionsAlerts') },
         { path: '/dashboard/socioeconomic', icon: Globe, label: t('nav.socioEconomic') },
         { path: '/dashboard/financial', icon: DollarSign, label: t('nav.financialCrime') },
@@ -384,7 +411,7 @@ export default function DashboardShell() {
 
             {/* Language toggle */}
             <button
-              onClick={toggle}
+              onClick={handleLangToggle}
               title={lang === 'en' ? 'Switch to Kannada' : 'Switch to English'}
               style={{
                 display: 'flex',

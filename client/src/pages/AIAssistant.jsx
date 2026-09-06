@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import {
   Send, Mic, MicOff, FileDown, Sparkles, Bot, User, Loader2,
   AlertCircle, ChevronDown, RotateCcw, Copy, CheckCircle, ChevronUp, Info, Volume2, VolumeX
@@ -824,13 +824,22 @@ export default function AIAssistant() {
       const hasKannada = /[\u0C80-\u0CFF]/.test(message.content)
       const language = hasKannada ? 'kn' : 'en'
       
+      // Strip markdown/tables before TTS to prevent cutoff/empty text
+      let ttsText = message.content
+        .replace(/\|.*?\|/g, '')
+        .replace(/[*_~`#|]/g, '')
+        .replace(/\n+/g, '. ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+      if (!ttsText || ttsText.length < 5) ttsText = message.content.slice(0, 400)
+      if (ttsText.length > 700) {
+        const cut = ttsText.lastIndexOf('.', 700)
+        ttsText = cut > 50 ? ttsText.slice(0, cut + 1) : ttsText.slice(0, 700)
+      }
       const res = await fetch(`${API_BASE}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: message.content,
-          language: language
-        })
+        body: JSON.stringify({ text: ttsText, language: language })
       })
 
       if (!res.ok) throw new Error('TTS failed')
