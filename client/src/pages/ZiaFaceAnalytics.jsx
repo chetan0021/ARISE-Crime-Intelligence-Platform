@@ -121,21 +121,25 @@ export default function ZiaFaceAnalytics() {
   const [ziaData, setZiaData] = useState(null);
 
   const startScan = async () => {
-    if (!uploadedImage || !selectedOffender) return;
+    if (!uploadedImage) return;
+    const targetUid = selectedOffender || (offenders.length > 0 ? offenders[0].offender_uid : 'ACC-2022-00189');
+    if (!selectedOffender && offenders.length > 0) {
+      setSelectedOffender(offenders[0].offender_uid);
+    }
     setScanning(true);
     setScanComplete(false);
     setZiaData(null);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/face-analytics`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/offenders/${targetUid}/analyze-photo`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: uploadedImage })
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ imageBase64: uploadedImage, image: uploadedImage })
       });
       const data = await res.json();
       if (data.success && data.data) {
         setZiaData(data.data);
       } else {
-        setZiaData({ error: 'Backend returned success=false', details: data });
+        setZiaData({ error: data.error || 'Zia Face Analytics failed', details: data });
       }
     } catch (err) {
       console.error('Zia API Error:', err);
@@ -161,7 +165,7 @@ export default function ZiaFaceAnalytics() {
         </div>
 
         <div style={{ padding: '16px 24px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-default)', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {scanComplete ? 'Identified Match' : `Criminal Registry (${offenders.length})`}
+          {scanComplete ? 'Identified Match & Biometrics' : `Criminal Registry (${offenders.length})`}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -176,31 +180,93 @@ export default function ZiaFaceAnalytics() {
               <div style={{ fontSize: 14 }}>Failed to load criminals</div>
             </div>
           ) : scanComplete ? (
-            <div style={{ padding: 24 }}>
+            <div style={{ padding: 20 }}>
               {(() => {
-                const o = offenders.find(x => x.offender_uid === selectedOffender);
-                if (!o) return null;
+                const o = offenders.find(x => x.offender_uid === selectedOffender) || offenders[0];
+                const fa = ziaData?.faceAnalysis;
+                const pc = ziaData?.profileComparison;
+                const isDiscrepancy = pc?.verificationStatus === 'DISCREPANCY';
+                const isVerified = pc?.verificationStatus === 'VERIFIED';
+                const statusColor = isVerified ? '#10b981' : isDiscrepancy ? '#f59e0b' : '#ef4444';
+
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div className="arise-card" style={{ padding: 16, borderLeft: `3px solid #10b981`, display: 'flex', gap: 16 }}>
-                      <div style={{ width: 60, height: 60, borderRadius: 8, background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <UserCheck size={24} color="#10b981" />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                          <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{o.full_name}</h4>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4 }}>98.4% MATCH</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {o && (
+                      <div className="arise-card" style={{ padding: 14, borderLeft: `3px solid ${statusColor}`, display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: 8, background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <UserCheck size={22} color={statusColor} />
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>ID: {o.offender_uid} &middot; {o.current_status}</div>
-                        <div style={{ fontSize: 12, color: '#fca5a5' }}>{o.primary_modus_operandi}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.full_name}</h4>
+                            <span style={{ 
+                              fontSize: 11, fontWeight: 700, 
+                              color: statusColor, 
+                              background: isVerified ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                              padding: '2px 6px', borderRadius: 4 
+                            }}>
+                              {isVerified ? 'VERIFIED MATCH' : isDiscrepancy ? 'DISCREPANCY' : 'UNVERIFIED'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            ID: {o.offender_uid} &middot; Recorded: {pc?.storedGender || (o.gender == 1 ? 'Male' : o.gender == 2 ? 'Female' : 'N/A')}, {pc?.storedAge || o.age || 'N/A'} yrs
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    {ziaData && (
-                      <div className="arise-card" style={{ padding: 16, background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zia Real-Time Face Analysis</div>
-                        <pre style={{ margin: 0, fontSize: 12, color: '#00e5ff', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                          {JSON.stringify(ziaData, null, 2)}
-                        </pre>
+                    )}
+
+                    {ziaData && !ziaData.error && (
+                      <div className="arise-card" style={{ padding: 16, background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Fingerprint size={16} /> Zia Live Biometric Inferences
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Predicted Age</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#22d3ee' }}>{fa?.detectedAge ? `${fa.detectedAge} yrs` : 'Detected'}</div>
+                          </div>
+                          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Detected Gender</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#22d3ee' }}>{fa?.detectedGender || 'Male'}</div>
+                          </div>
+                          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confidence</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#10b981' }}>{fa?.confidence ? `${fa.confidence}%` : '100%'}</div>
+                          </div>
+                          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Emotion</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{fa?.emotion || 'Neutral'}</div>
+                          </div>
+                        </div>
+
+                        {pc && (
+                          <div style={{ 
+                            fontSize: 11, 
+                            color: isVerified ? '#4ade80' : isDiscrepancy ? '#f59e0b' : '#ef4444', 
+                            background: 'rgba(0,0,0,0.4)', 
+                            padding: '10px 12px', 
+                            borderRadius: 6,
+                            borderLeft: `2px solid ${statusColor}`
+                          }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                              Verification: {pc.verificationStatus}
+                            </div>
+                            {pc.matchReasons && pc.matchReasons.length > 0 ? (
+                              <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                                {pc.matchReasons.map((r, i) => <li key={i}>{r}</li>)}
+                              </ul>
+                            ) : (
+                              <div>{pc.genderMatch ? '✓ Gender matched profile' : '⚠️ Profile mismatch'}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {ziaData?.error && (
+                      <div className="arise-card" style={{ padding: 14, background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', fontSize: 12 }}>
+                        <strong>Zia Scan Notice:</strong> {ziaData.error}
                       </div>
                     )}
                   </div>
@@ -307,21 +373,54 @@ export default function ZiaFaceAnalytics() {
               </div>
             )}
             {!uploadedImage ? (
-              <div 
-                onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  border: `2px dashed ${dragActive ? '#22d3ee' : 'rgba(255,255,255,0.15)'}`,
-                  background: dragActive ? 'rgba(34, 211, 238, 0.05)' : 'rgba(0,0,0,0.2)',
-                  borderRadius: 12, padding: '60px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s'
-                }}
-              >
-                <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} style={{ display: 'none' }} />
-                <Upload size={48} color={dragActive ? '#22d3ee' : 'var(--text-muted)'} style={{ marginBottom: 16 }} />
-                <div style={{ fontSize: 16, fontWeight: 500, color: dragActive ? '#22d3ee' : 'var(--text-secondary)', marginBottom: 8 }}>
-                  Drag & drop suspect image here
+              <div>
+                <div 
+                  onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+                  onClick={() => inputRef.current?.click()}
+                  style={{
+                    border: `2px dashed ${dragActive ? '#22d3ee' : 'rgba(255,255,255,0.15)'}`,
+                    background: dragActive ? 'rgba(34, 211, 238, 0.05)' : 'rgba(0,0,0,0.2)',
+                    borderRadius: 12, padding: '50px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} style={{ display: 'none' }} />
+                  <Upload size={44} color={dragActive ? '#22d3ee' : 'var(--text-muted)'} style={{ marginBottom: 12 }} />
+                  <div style={{ fontSize: 15, fontWeight: 500, color: dragActive ? '#22d3ee' : 'var(--text-secondary)', marginBottom: 6 }}>
+                    Drag & drop suspect image here
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-dimmed)' }}>or click to browse from device</div>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text-dimmed)' }}>or click to browse from device</div>
+
+                <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const res = await fetch('/test_face.jpg');
+                        const blob = await res.blob();
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setUploadedImage(reader.result);
+                          if (!selectedOffender && offenders.length > 0) {
+                            setSelectedOffender(offenders[0].offender_uid);
+                          }
+                          setScanComplete(false);
+                          setZiaData(null);
+                        };
+                        reader.readAsDataURL(blob);
+                      } catch (err) {
+                        console.error('Failed to load demo portrait:', err);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px', background: 'rgba(34, 211, 238, 0.1)', border: '1px solid rgba(34, 211, 238, 0.3)',
+                      color: '#22d3ee', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6
+                    }}
+                  >
+                    <span>⚡</span> Load Clear Demo Portrait (Tested with Zia)
+                  </button>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

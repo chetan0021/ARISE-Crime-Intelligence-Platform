@@ -307,7 +307,8 @@ export default function ZiaOrb({ variant = 'default' }) {
           message: queryText, 
           history: history, 
           language: lang === 'kn' ? 'kn' : 'en',
-          pageContext: location.pathname
+          pageContext: location.pathname,
+          voice_mode: true
         })
       });
       const data = await res.json();
@@ -344,7 +345,7 @@ export default function ZiaOrb({ variant = 'default' }) {
       const ttsRes = await fetch(`${API_BASE}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kn' ? 'kn' : 'en' })
+        body: JSON.stringify({ text: cleanSpeechText, language: lang === 'kn' ? 'kn' : 'en', voice: lang === 'kn' ? 'kn-IN-SapnaNeural' : 'en-US-AvaNeural' })
       });
 
       if (ttsRes.ok) {

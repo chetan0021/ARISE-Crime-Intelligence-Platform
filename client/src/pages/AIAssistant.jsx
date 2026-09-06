@@ -839,7 +839,7 @@ export default function AIAssistant() {
       const res = await fetch(`${API_BASE}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: ttsText, language: language })
+        body: JSON.stringify({ text: ttsText, language: language, voice: language === 'kn' ? 'kn-IN-SapnaNeural' : 'en-US-AvaNeural' })
       })
 
       if (!res.ok) throw new Error('TTS failed')

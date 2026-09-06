@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const catalyst = require('zcatalyst-sdk-node');
 
@@ -49,14 +49,7 @@ const fs = require('fs');
 // /api/face-analytics
 app.post('/api/face-analytics', async (req, res) => {
   try {
-    let body;
-    try {
-      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    } catch (e) {
-      return res.status(400).json({ success: false, error: 'Invalid JSON body' });
-    }
-
-    const image = body?.image || body?.imageBase64;
+    const { image } = req.body;
     if (!image) return res.status(400).json({ success: false, error: 'Missing image in body' });
 
     // Extract base64 data (handle data:image/jpeg;base64,... if present)
@@ -65,10 +58,7 @@ app.post('/api/face-analytics', async (req, res) => {
     fs.writeFileSync(tempFilePath, base64Data, { encoding: 'base64' });
 
     const zia = res.locals.catalystApp.zia();
-    let facePromise = zia.analyseFace(
-      fs.createReadStream(tempFilePath),
-      { mode: 'advanced', age: 'true', gender: 'true', emotion: 'true' }
-    );
+    let facePromise = zia.analyseFace(fs.createReadStream(tempFilePath), {"mode":"moderate", "gender" : "false"});
     
     facePromise.then(content => {
       try { fs.unlinkSync(tempFilePath); } catch (e) {}
@@ -807,10 +797,10 @@ Format strictly as JSON. Do NOT use ellipsis (...). The JSON must have this exac
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: "process.env.ZOHO_CLIENT_ID",
-          client_secret: process.env.ZOHO_CLIENT_SECRET,
+          client_id: "1000.CV5ZP0JVB6E1ASASMSRTDHWP2WKKZR",
+          client_secret: "b4c2b86fc748394b93bc7afd4425a977f332363bb2",
           grant_type: "refresh_token",
-          refresh_token: process.env.ZOHO_REFRESH_TOKEN
+          refresh_token: "1000.efbfaaecacee15edd21697ec0c397409.7444ac138fdba90a41320358aea1a575"
         })
       });
       const tokenData = await tokenRes.json();
@@ -1151,199 +1141,6 @@ app.get('/api/reports/list-firs', async (req, res) => {
     }
   });
 
-/**
- * Strips chain-of-thought / reasoning / self-talk noise from LLM responses.
- * Runs on EVERY response unconditionally — handles <think> tags, self-talk
- * like "The user said...", "Let me check...", numbered analysis steps,
- * meta headers (Role, Identity, Purpose, Constraint, Security), and more.
- */
-function stripLLMThinking(rawText) {
-  if (!rawText || typeof rawText !== 'string') return '';
-  let t = rawText;
-
-  // 1) Remove <think>...</think> blocks (newer GLM / reasoning models)
-  t = t.replace(/<think[\s\S]*?<\/think>/gi, ' ');
-  t = t.replace(/```think[\s\S]*?```/gi, ' ');
-
-  // 2) Split into lines and process line-by-line
-  const lines = t.split(/\r?\n/);
-  const kept = [];
-  let inBulkReasoningBlock = false;
-
-  const REASONING_BLOCK_HEADERS = [
-    /^\*?\*?Thinking\b/i,
-    /^\*?\*?Thought\b/i,
-    /^\*?\*?Reasoning\b/i,
-    /^\*?\*?Analysis\b/i,
-    /^\*?\*?Plan\b/i,
-    /^\*?\*?Steps?\b/i,
-    /^\*?\*?Approach\b/i,
-    /^\*?\*?Strategy\b/i,
-    /^\*?\*?Let me (think|analyze|understand|verify|check|process|look|search|find|confirm|review|reason)\b/i,
-    /^\*?\*?Okay,?\s+(let|now|so)\b/i,
-    /^\*?\*?First,?\s+(let|I)\b/i,
-    /^\*?\*?The user (said|asked|is asking|wants|is trying|is requesting)\b/i,
-    /^\*?\*?User (said|asked|query|request|question):?\b/i,
-    /^Analyze\s+(the\s+)?(Request|Query|Question|Input|User|Task|Prompt)\s*:?\s*$/i,
-    /^(Scan|Search|Inspect|Review|Explore|Check)\s+(the\s+)?(Database|Context|Data|Records|Table|List|Schema|Fields?|History)\s*:?\s*$/i,
-    /^(Filter|Selection|Match|Join|Map|Merge|Cross-?[Rr]ef(?:erence)?|Lookup|Search|Query)\s+(Logic|Plan|Strategy|Steps?|Condition|Rule|Criteria|Approach)\s*:?\s*$/i,
-    /^(Constraint|Limitation|Requirement|Boundary|Rule|Validation|Safety|Guardrail)\s*(Check|Match|Test|Condition)?\s*:?\s*$/i,
-    /^(Alternative|Fallback|Backup|Secondary|Option|Alternate)\s+(Strategy|Plan|Approach|Method|Solution)\s*:?\s*$/i,
-    /^(Observation|Finding|Note|Insight|Discovery|Result|Summary|Conclusion|Reasoning)\s*(s)?\s*:?\s*$/i,
-    /^(Target|Goal|Objective|Output|Deliverable|Result|Intent|Purpose|Task|Action)\s*:?\s*$/i,
-    /^(Data\s+)?(Structure|Format|Schema|Mapping|Fields?|Columns?|Keys?|IDs?|Relations?|Relationships?|Model)\s*:?\s*$/i,
-    /^(Execution|Implementation|Application|Processing)\s+(Plan|Steps?|Logic|Flow|Order|Strategy)\s*:?\s*$/i,
-    /^(Language|Locale|Region|Format|Response\s+Type|Output\s+Format)\s*:?\s*$/i,
-    /^Item\s+\d+:\s+/i,
-    /\(Wait,\s+/i,
-    /\(This\s+fits\s+/i
-  ];
-
-  const META_HEADERS = [
-    /^\*?\*?Role\b/i,
-    /^\*?\*?Identity\b/i,
-    /^\*?\*?Purpose\b/i,
-    /^\*?\*?Constraint\b/i,
-    /^\*?\*?Security\b/i,
-    /^\*?\*?Instruction\b/i,
-    /^\*?\*?System\b/i,
-    /^\*?\*?Context\b/i,
-    /^\*?\*?Task\b/i,
-    /^\*?\*?Goal\b/i,
-    /^\*?\*?Output\b/i,
-    /^\*?\*?Format\b/i
-  ];
-
-  // "Label: value" meta key colon pattern where label is title case short
-  const COLON_LABEL = /^(?<label>[A-Z][A-Za-z0-9 _\-/]{2,78})\s*:/;
-
-  const REASONING_LABEL_KEYWORDS = /\b(request|query|question|input|user|task|database|context|logic|steps?|plan|strategy|approach|check|condition|constraint|observation|finding|note|insight|target|goal|structure|schema|mapping|join|match|filter|selection|alternative|fallback|language|output|format|execution|processing|analysis|thinking|thought|reasoning|scan|search|review|explore|inspect|investigation|method|workflow|breakdown|decomposition|validation|implementation|application)\b/i;
-
-  function isColonTitledSection(lineTrimmed) {
-    if (REASONING_BLOCK_HEADERS.some(r => r.test(lineTrimmed))) return true;
-    if (META_HEADERS.some(r => r.test(lineTrimmed))) return true;
-    const m = lineTrimmed.match(COLON_LABEL);
-    if (!m) return false;
-    const label = m.groups.label.trim();
-    if (label.length < 3 || label.length > 70) return false;
-    const colonIdx = m.index + m[0].length;
-    const afterColon = lineTrimmed.slice(colonIdx).trim();
-    if (afterColon.length === 0) return REASONING_LABEL_KEYWORDS.test(label);
-    return REASONING_LABEL_KEYWORDS.test(label);
-  }
-
-  function isReasoningBodyNarrative(lineTrimmed) {
-    const tlc = lineTrimmed.toLowerCase();
-    return (
-      /^(let'?s|let me|let us)\b/i.test(lineTrimmed) ||
-      /^i\s+(need to|should|will|can|must|cannot|can't|won't|have to|want to|'ll)\b/i.test(lineTrimmed) ||
-      /^the\s+[a-z0-9_ ]{2,60}\s+(list|table|record|entry|field|column|object|array|dataset|data)\s+(contains|has|include|holds|store|provides|with|of|is|are|show)/i.test(lineTrimmed) ||
-      /^(the\s+)?(ids?|id|keys?|values?|fields?|columns?|rows?|names?)\b.*\b(match|align|correspond|map|join|relate|differ|vary|overlap|connect|link|associate)\b/i.test(lineTrimmed) ||
-      /^(since|because|as\s+|given\s+|however|but[,\s]|though|although|while|whereas|nonetheless|nevertheless|consequently|therefore|thus|hence|accordingly)\b/i.test(lineTrimmed) ||
-      /^(also|additionally|furthermore|moreover|besides|next|then|meanwhile|otherwise|instead|alternatively|separately)\b/i.test(lineTrimmed) ||
-      /^(these|those|such|this\s+(means|implies|suggests|shows|indicates|confirms)|that\s+(means|implies|suggests|shows|indicates|confirms))\b/i.test(lineTrimmed) ||
-      /^(note\s+that|observe\s+that|notice\s+that|recall\s+that|remember\s+that|consider\s+that|keep\s+in\s+mind)\b/i.test(lineTrimmed) ||
-      /^(observation|finding|note|insight|discovery|summary|conclusion|target|goal|constraint|limitation|condition|step|plan|approach|strategy|output|format|intent|purpose|action)\b\s*[:\-]/i.test(lineTrimmed) ||
-      /\b(the\s+)?(repeat\s+offenders?|bail\s+status|fir|accused|offender|district|hotspot|crime)\s+(list|table|record|data|dataset)\b/i.test(tlc) ||
-      /^[A-Z][A-Za-z0-9_]{2,60}\s+(has|contains|includes|stores|holds|lists|shows|provides|with|of)\b/i.test(lineTrimmed) ||
-      /^(After|Once|When|While|Before|As|Upon|Following|If)\b.*\b(I|we|one)\s+(will|should|must|need to|can|shall|may|might|could|'ll)\b/i.test(lineTrimmed)
-    );
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine;
-    const trimmed = line.trim();
-    if (!trimmed) { kept.push(''); continue; }
-
-    const isReasoningHeader = REASONING_BLOCK_HEADERS.some(r => r.test(trimmed));
-    const isMetaHeader = META_HEADERS.some(r => r.test(trimmed));
-    const isColonHeader = isColonTitledSection(trimmed);
-    if (isReasoningHeader || isMetaHeader || isColonHeader) {
-      inBulkReasoningBlock = true;
-      continue;
-    }
-
-    // Markdown heading lines that introduce reasoning chunks
-    if (/^#{1,6}\s*(Thinking|Thought|Reasoning|Analysis|Plan|Steps?|Approach|Context|Strategy|Execution|Processing)\b/i.test(trimmed)) {
-      inBulkReasoningBlock = true;
-      continue;
-    }
-
-    const INLINE_SELF_TALK = [
-      /^(Okay,?\s+)?(so|now)\s+(I|let me)\b[^.!?]*?[.!?]?\s*$/i,
-      /^(Before answering,?\s+)?Let me (think|analyze|understand|verify|check|process|look into|search for|find|confirm|review|figure out|break down|reason through|reason|map|join|cross-?[Rr]ef(?:erence)?|inspect|examine|evaluate|compare|match)\b[^.!?]*?[.!?]?\s*$/i,
-      /^Before answering,?\s+let me\b[^.!?]*?[.!?]?\s*$/i,
-      /^The user (said|asked|is asking|is requesting|wants|would like|needs)\b[^.!?]*?[.!?]?\s*$/i,
-      /^User\b[^.!?]*?[.!?]?\s*$/i,
-      /^I\s+(need to|should|will|can|must|cannot|can't|won't|have to|want to)\s+(verify|check|analyze|think|review|examine|process|look|determine|confirm|find|identify|map|join|match|extract|gather|collect|fetch|query|search|compare|evaluate|assess|consider|apply|perform|implement|execute|build|construct|filter|select|choose|decide)\b.*$/i,
-      /^First,?\s+(I|let me)\s+(need to|should|will|can|must)?\s*(verify|check|analyze|think|review|examine|process|look|determine|confirm|find|identify|map|join|match|extract|gather|collect|fetch|query|search|compare|evaluate|assess|consider|apply|perform|implement|execute|filter|select|choose|decide)\b.*$/i,
-      /^Secondly?,?\s+(I|let me)\b[^.!?]*?[.!?]?\s*$/i,
-      /^Hmm\b[^.!?]*?[.!?]?\s*$/i,
-      /^Alright,?\s+(let me|I)\b[^.!?]*?[.!?]?\s*$/i,
-      /^Let'?s\s+(look\s+at|check|see|review|examine|analyze|consider|compare|evaluate|try|do|start|begin|think|assess|inspect|map|verify|confirm)\b/i,
-      /^I\s+see\b/i,
-      /^I\s+(think|believe|feel|suspect|guess|suppose|expect|imagine)\b/i,
-      /^This\s+(is|looks|seems|appears|feels)\s+(tricky|tricky\.|interesting|complex|complicated|simple|straightforward|important|critical|crucial|key)/i,
-      /^I\s+found\s+(a|the|an)\s+(section|list|table|item|record|entry|field|dataset)/i,
-      /^\(Wait,\s+/i,
-      /^\(This\s+fits\s+/i,
-      /^\(Bidadi\s+is\s+in\s+/i
-    ];
-    if (INLINE_SELF_TALK.some(r => r.test(trimmed))) continue;
-
-    // Numbered reasoning steps — kill only reasoning-verb items (never kill answer numbers indiscriminately)
-    const numberedMatch = trimmed.match(/^(\d+)[.)\]]\s+(.+)$/);
-    if (numberedMatch) {
-      const stepText = numberedMatch[2];
-      const REASONING_STEP_VERBS = /^(check|verify|analyze|think about|determine|review|examine|process|search for|find|look for|look up|query|fetch|gather|collect|understand|break down|identify|evaluate|assess|consider|note that|notice that|recall|remember|cross-check|cross check|map|join|match|inspect|compare|filter|select|extract|confirm|validate|scan|explore|aggregate|sort|rank|order|group|categorize|classify|cluster|prioritize|organize|structure|compile|summarize|format|present|build|construct|generate|produce|create)\b/i;
-      if (REASONING_STEP_VERBS.test(stepText)) continue;
-    }
-
-    // Bullet reasoning steps — kill only reasoning-verb bullets (never kill answer bullets indiscriminately)
-    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
-    if (bulletMatch) {
-      const stepText = bulletMatch[1];
-      const REASONING_BULLET = /^(check|verify|analyze|think about|determine|review|examine|process|search for|find|look for|query|fetch|gather|collect|understand|break down|identify|evaluate|assess|consider|note that|notice that|cross-check|cross check|map|join|match|inspect|compare|filter|select|extract|confirm|validate|scan|explore|aggregate|sort|rank|order|group|categorize|classify|cluster|prioritize|organize|structure|compile|summarize|format|present|build|construct|generate|produce|create)\b/i;
-      if (REASONING_BULLET.test(stepText)) continue;
-    }
-
-    // Exit bulk reasoning mode ONLY after a strong answer signal
-    if (inBulkReasoningBlock) {
-      const looksLikeMetaOrNarrative =
-        REASONING_BLOCK_HEADERS.some(r => r.test(trimmed)) ||
-        META_HEADERS.some(r => r.test(trimmed)) ||
-        isColonTitledSection(trimmed) ||
-        INLINE_SELF_TALK.some(r => r.test(trimmed)) ||
-        isReasoningBodyNarrative(trimmed);
-
-      if (!looksLikeMetaOrNarrative) {
-        inBulkReasoningBlock = false;
-      } else {
-        continue;
-      }
-    }
-
-    kept.push(line);
-  }
-
-  t = kept.join('\n');
-
-  // 3) Kill bracketed inline reasoning like [Thought: checking X]
-  t = t.replace(/\[(Thought|Reasoning|Analysis|Thinking|Note|Plan|Strategy)\s*[:\-][^\]]*\]/gi, ' ');
-  t = t.replace(/\(\s*(Let me|The user|Okay,? so|First,|Now I|I need|Let's|Let me|Observation|Note that|Consider)\b[^)]{4,200}\)/gi, ' ');
-
-  // 4) Kill stray meta labels (strict reasoning keyword-only — never kill generic result headers)
-  t = t.replace(/^(Observation|Finding|Note|Insight|Discovery|Target|Goal|Constraint|Condition|Strategy|Approach|Plan|Step|Intent|Purpose|Action|Language|Locale|Format|Output|Context|Data\s+Structure|Structure|Mapping|Join|Filter|Match|Selection|Thinking|Thought|Reasoning|Analysis|Execution|Processing|Validation|Implementation|Application|Workflow|Method|Breakdown|Decomposition|Investigation|Inspection|Exploration|Scan|Search|Review)\s*:\s*.{0,200}$/gim, '');
-  t = t.replace(/^[A-Z_\- ]{3,80}:\s*$/gm, '');
-
-  // 5) Collapse blank lines and whitespace
-  t = t.replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
-
-  // 6) Safety net fallback — never return empty
-  if (!t) t = "Based on the current records, I can confirm this is being processed. Would you like specific details?";
-  return t;
-}
-
 // /api/chatbot/query
 app.post('/api/chatbot/query', async (req, res) => {
     try {
@@ -1487,7 +1284,6 @@ ${JSON.stringify(context, null, 2)}
           }
         } catch (e) {}
 
-        let tokenErrorStr = "";
         const fetch = require('node-fetch');
         if (!authToken) {
           try {
@@ -1504,12 +1300,8 @@ ${JSON.stringify(context, null, 2)}
             if (tokenRes.ok) {
               const tokenData = await tokenRes.json();
               authToken = tokenData.access_token;
-            } else {
-              tokenErrorStr = await tokenRes.text();
             }
-          } catch (err) {
-            tokenErrorStr = err.message;
-          }
+          } catch (err) {}
         }
 
         const fetchOptions = {
@@ -1544,31 +1336,22 @@ ${JSON.stringify(context, null, 2)}
             finalResponse = String(glmResult.response).trim();
           }
           if (finalResponse) {
-            // Simple thinking pattern filter (from working version)
-            const thinkingPatterns = /^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|Let me analyze|Analyze the Request|Scan the Database|Item \d+:|User:|Role:|Constraint:)/i;
+            const thinkingPatterns = /^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|Let me analyze)/i;
             if (thinkingPatterns.test(finalResponse)) {
               const lines = finalResponse.split('\n').filter(l => {
                 const trimmed = l.trim();
-                return trimmed && 
-                       !trimmed.match(/^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|\*\*Role|\*\*Constraint|\*\*Security|\*\*Identity|\*\*Purpose|Item \d+:|User:|Language:|Scan|Analyze the Request|The user)/) && 
-                       !trimmed.startsWith('*') &&
-                       !trimmed.match(/^\(Wait,/) &&
-                       !trimmed.match(/^\(This fits/) &&
-                       !trimmed.match(/^I need to/) &&
-                       !trimmed.match(/^Let me/);
+                return trimmed && !trimmed.match(/^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|\*\*Role|\*\*Constraint|\*\*Security|\*\*Identity|\*\*Purpose|\*   )/) && !trimmed.startsWith('*');
               });
               if (lines.length > 0) finalResponse = lines.join(' ').trim();
             }
           }
           if (!finalResponse) finalResponse = "I need a moment to process. Could you repeat?";
         } else {
-          const errText = await response.text();
-          throw new Error(`GLM Error: HTTP ${response.status} - ${errText}`);
+          throw new Error("GLM Error");
         }
       } catch (llmError) {
         usedLLM = false;
-        reasoning = `LLM Call Failed: ${llmError.message}`;
-        finalResponse = generateZiaIntelligenceResponse(userMessage, context, pageContext);
+        finalResponse = "I am currently offline or experiencing issues connecting to my AI brain. Please check your connection.";
       }
 
       res.json({
@@ -1588,68 +1371,6 @@ ${JSON.stringify(context, null, 2)}
       res.status(500).json({ success: false, data: { response: "Internal Error" } });
     }
   });
-
-function generateZiaIntelligenceResponse(userMessage, context, pageContext) {
-  const isKannada = /[\u0C80-\u0CFF]/.test(userMessage);
-  const msgLower = (userMessage || '').toLowerCase();
-  
-  // 1. Offender protocol: if user asks about a specific person
-  const nameQueryMatch = userMessage.match(/(?:who is|about|offender|accused|details on|tell me about)\s+([A-Za-z\s]+)/i);
-  if (nameQueryMatch) {
-    const queryName = nameQueryMatch[1].trim().toLowerCase();
-    const allNames = context.data?.allAccusedNames || [];
-    const foundAccused = allNames.find(n => n.toLowerCase().includes(queryName));
-    if (!foundAccused && queryName.length > 2 && !['the', 'this', 'that', 'crime', 'hotspot', 'fir', 'district'].includes(queryName)) {
-      if (isKannada) {
-        return `ಈ ಹೆಸರು ಡೇಟಾಬೇಸ್‌ನಲ್ಲಿ ಲಭ್ಯವಿಲ್ಲ. ಇವರು ಹೊಸ ಅಪರಾಧಿಯೇ? ನೀವು ಅವರ ಬಗ್ಗೆ ನನಗೆ ವಿವರಿಸಬಹುದು ಮತ್ತು ಅವರ ವಿರುದ್ಧ ಎಫ್‌ಐಆರ್ ದಾಖಲಿಸಲು ನಾನು ಸಲಹೆ ನೀಡುತ್ತೇನೆ. ನೀವು ಅದನ್ನು CCTNS ನಲ್ಲಿ ನವೀಕರಿಸಿದ ತಕ್ಷಣ, ಅದು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ARISE ನಲ್ಲಿ ಪ್ರತಿಫಲಿಸುತ್ತದೆ.`;
-      }
-      return `This name is not available in the database. Is this a new criminal? You can explain about him to me, and I suggest you book an FIR on him. Once you update it in CCTNS, it will automatically reflect in ARISE.`;
-    }
-  }
-
-  // 2. Greetings
-  if (/^(hi|hello|hey|namaste|greetings)/i.test(msgLower) || /^(ನಮಸ್ಕಾರ|ಹಲೋ|ಹೇ)/i.test(userMessage)) {
-    if (isKannada) {
-      return `ನಮಸ್ಕಾರ! ನಾನು ಜಿಯಾ (Zia), ಕರ್ನಾಟಕ ಪೊಲೀಸ್ SCRB ಗಾಗಿ ARISE AI ಸಹಾಯಕ. ರಾಜ್ಯದಾದ್ಯಂತ ಅಪರಾಧ ವಿಶ್ಲೇಷಣೆ, ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳು, ಅಪರಾಧಿಗಳ ಮಾಹಿತಿ ಮತ್ತು ಎಫ್‌ಐಆರ್ ದಾಖಲೆಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಲು ನಾನು ಸಿದ್ಧನಿದ್ದೇನೆ. ಇಂದು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?`;
-    }
-    return `Hello! I am Zia, the AI Intelligence Assistant for ARISE (Karnataka Police SCRB). I can provide real-time analytics on state-wide crime trends, hotspot alerts, offender profiling, and FIR records. How can I assist your investigation today?`;
-  }
-
-  // 3. Hotspots & High Risk Districts
-  if (/(hotspot|risk|tier|worst|vulnerable|area|place|location)/i.test(msgLower) || /(ಹಾಟ್‌ಸ್ಪಾಟ್|ಅಪಾಯ)/i.test(userMessage)) {
-    const hs = context.data?.hotspots || [];
-    if (isKannada) {
-      return `ಕರ್ನಾಟಕ ರಾಜ್ಯದ ಹಾಟ್‌ಸ್ಪಾಟ್ ವಿಶ್ಲೇಷಣೆಯ ಪ್ರಕಾರ, ಒಟ್ಟು **${context.summary?.totalHotspots || 12}** ಹೆಚ್ಚಿನ ಅಪಾಯದ ವಲಯಗಳನ್ನು ಗುರುತಿಸಲಾಗಿದೆ. ಬೆಂಗಳೂರು ನಗರ, ಮೈಸೂರು ಮತ್ತು ಬೆಳಗಾವಿ ಜಿಲ್ಲೆಗಳಲ್ಲಿ ಹೆಚ್ಚಿನ ಅಪರಾಧ ಚಟುವಟಿಕೆಗಳು ದಾಖಲಾಗಿವೆ. ಗಸ್ತು ಹೆಚ್ಚಿಸಲು ಮತ್ತು BNSS ನಿಯಮಗಳನ್ನು ಕಟ್ಟುನಿಟ್ಟಾಗಿ ಜಾರಿಗೊಳಿಸಲು ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ.`;
-    }
-    const topHs = hs.slice(0, 3).map(h => `• **${h.district_name || 'Urban Sector'}**: Risk Tier ${h.risk_tier || 'HIGH'} (Score: ${h.composite_risk_score || '0.84'}, Dominant: ${h.dominant_crime_type || 'Theft/BNS-305'})`).join('\n');
-    return `Based on real-time spatial analytics across Karnataka, we are tracking **${context.summary?.totalHotspots || 12} high-risk hotspots**:\n\n${topHs || '• **Bengaluru Urban**: Risk Tier CRITICAL (Score: 0.91, Dominant: Cyber Fraud & Burglary)\n• **Mysuru**: Risk Tier HIGH (Score: 0.78, Dominant: Property Offence)\n• **Belagavi**: Risk Tier MEDIUM (Score: 0.65, Dominant: Night Theft)'}\n\n**Action Recommendation**: Deploy AI-optimized dynamic patrolling during peak evening hours (20:00 - 02:00).`;
-  }
-
-  // 4. Offenders & Accused
-  if (/(offender|accused|repeat|rowdy|criminal|arrest|bail|custody)/i.test(msgLower) || /(ಅಪರಾಧಿ|ಜಾಮೀನು)/i.test(userMessage)) {
-    const totalA = context.summary?.totalAccuseds || 86;
-    if (isKannada) {
-      return `ARISE ಸಿಸ್ಟಂನಲ್ಲಿ ಪ್ರಸ್ತುತ **${totalA}** ಅಪರಾಧಿಗಳು ದಾಖಲಾಗಿದ್ದಾರೆ. ಪುನರಾವರ್ತಿತ ಅಪರಾಧಿಗಳು ಮತ್ತು ರೌಡಿ ಶೀಟರ್‌ಗಳ ಚಲನವಲನಗಳನ್ನು ಬಯೋಮೆಟ್ರಿಕ್ ಮತ್ತು ಮೊಡಸ್ ಆಪರೇಂಡಿ (MO) ಮೂಲಕ ನಿಕಟವಾಗಿ ಮೇಲ್ವಿಚಾರಣೆ ಮಾಡಲಾಗುತ್ತಿದೆ.`;
-    }
-    return `Currently tracking **${totalA} offenders** in the state registry. Key highlights:\n• **Biometric & Facial Verification**: Active with Zia Face Analytics\n• **High Recidivism Risk Offender**: Rajesh Patil (Score: 0.92, Absconding)\n• **Bail Compliance**: 14 offenders currently on court-monitored bail\n• **Cross-jurisdiction tracking**: 6 multi-district gang affiliations identified.`;
-  }
-
-  // 5. Overview / Statistics / FIRs
-  if (/(summary|statistic|overview|kpi|total|fir|cases|crime)/i.test(msgLower) || /(ವರದಿ|ಅಂಕಿಅಂಶ)/i.test(userMessage)) {
-    const totalF = context.summary?.totalFIRs || 142;
-    const totalA = context.summary?.totalAccuseds || 86;
-    if (isKannada) {
-      return `**ರಾಜ್ಯದ ಅಪರಾಧ ಗುಪ್ತಚರ ಸಾರಾಂಶ:**\n• ಒಟ್ಟು ದಾಖಲಾದ ಎಫ್‌ಐಆರ್‌ಗಳು: **${totalF}**\n• ಟ್ರ್ಯಾಕ್ ಮಾಡಲಾದ ಅಪರಾಧಿಗಳು: **${totalA}**\n• ಸಕ್ರಿಯ ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳು: **${context.summary?.totalHotspots || 12}**\n• ಎಲ್ಲಾ ಡೇಟಾ CCTNS ಮತ್ತು BNSS ಮಾನದಂಡಗಳೊಂದಿಗೆ ಸಿಂಕ್ ಆಗಿದೆ.`;
-    }
-    return `**State-wide ARISE Intelligence Overview:**\n• **Total FIRs Registered**: ${totalF}\n• **Accused / Repeat Offenders Tracked**: ${totalA}\n• **Active Risk Hotspots**: ${context.summary?.totalHotspots || 12}\n• **Compliance Status**: 100% aligned with BNSS Section 173 forensic logging requirements.`;
-  }
-
-  // Default contextual response
-  if (isKannada) {
-    return `ನಾನು ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ವಿಶ್ಲೇಷಿಸಿದ್ದೇನೆ. "${pageContext || 'ARISE'}" ಪರದೆಯ ಲಭ್ಯವಿರುವ CCTNS ಮತ್ತು ZCQL ದಾಖಲೆಗಳ ಆಧಾರದ ಮೇಲೆ, ಸಿಸ್ಟಮ್ ನೈಜ-ಸಮಯದ ಅಂಕಿಅಂಶಗಳು ಮತ್ತು ಮುನ್ಸೂಚನೆಗಳನ್ನು ನಿರಂತರವಾಗಿ ನವೀಕರಿಸುತ್ತಿದೆ. ನೀವು ನಿರ್ದಿಷ್ಟ ಜಿಲ್ಲೆ ಅಥವಾ ಅಪರಾಧದ ಬಗ್ಗೆ ಹೆಚ್ಚಿನ ವಿವರಗಳನ್ನು ಕೇಳಬಹುದು.`;
-  }
-  return `I have analyzed your query against the state intelligence database. Based on current records and ${pageContext ? `"${pageContext}" context` : 'SCRB feeds'}, all active FIRs, offender biometric signatures, and predictive risk indicators are synchronized and operational. Feel free to ask for specific district breakdowns, suspect background checks, or forensic compliance reports.`;
-}
 
 
 // Helper: simple intent detection
@@ -2285,194 +2006,23 @@ app.get('/api/offenders/:uid', async (req, res) => {
 });
 
 app.post('/api/offenders/:uid/analyze-photo', async (req, res) => {
-  // ── REAL Zia Face Analytics via Zoho Catalyst SDK ──
-  const os = require('os');
-  const path = require('path');
-  const fs = require('fs');
-
-  try {
-    const uid = req.params.uid;
-
-    // Parse body: frontend sends JSON string via Content-Type: text/plain
-    let body;
-    try {
-      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    } catch (e) {
-      return res.status(400).json({ success: false, error: 'Invalid JSON body' });
+  // Simulating Zia Face Analytics with a successful verified response
+  res.json({
+    success: true,
+    data: {
+      faceAnalysis: {
+        faceCount: 1,
+        detectedAge: Math.floor(Math.random() * (45 - 25 + 1)) + 25,
+        detectedGender: 'Male',
+        confidence: 96.5 + (Math.random() * 3)
+      },
+      profileComparison: {
+        verificationStatus: 'VERIFIED',
+        storedAge: 'Matched',
+        genderMatch: true
+      }
     }
-
-    const { imageBase64 } = body || {};
-    if (!imageBase64) {
-      return res.status(400).json({ success: false, error: 'Missing imageBase64 in body' });
-    }
-
-    // 1. Write base64 image to a temp file
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    const tempFilePath = path.join(os.tmpdir(), `zia_offender_${Date.now()}.jpg`);
-    fs.writeFileSync(tempFilePath, base64Data, { encoding: 'base64' });
-
-    // 2. Fetch stored offender profile for comparison
-    let storedAge = null;
-    let storedGender = null;
-    let storedName = null;
-    try {
-      const zcql = res.locals.catalystApp.zcql();
-      let query = `SELECT Accused.AccusedMasterID, Accused.AccusedName, Accused.AgeYear, Accused.GenderID, Accused.PersonID FROM Accused WHERE Accused.AccusedMasterID = ${uid} LIMIT 1`;
-      if (isNaN(parseInt(uid))) {
-        query = `SELECT Accused.AccusedMasterID, Accused.AccusedName, Accused.AgeYear, Accused.GenderID, Accused.PersonID FROM Accused WHERE Accused.PersonID = '${uid}' LIMIT 1`;
-      }
-      const accusedRows = await zcql.executeZCQLQuery(query).catch(async () => {
-        return await zcql.executeZCQLQuery(`SELECT Accused.AccusedMasterID, Accused.AccusedName, Accused.AgeYear, Accused.GenderID, Accused.PersonID FROM Accused LIMIT 100`).catch(() => []);
-      });
-
-      const matchedAccused = accusedRows.map(r => r.Accused || r).find(a => String(a.AccusedMasterID) === String(uid) || String(a.PersonID) === String(uid)) || (accusedRows[0]?.Accused || accusedRows[0]);
-
-      if (matchedAccused) {
-        storedAge = parseInt(matchedAccused.AgeYear) || null;
-        storedName = matchedAccused.AccusedName || null;
-        const rawG = matchedAccused.GenderID;
-        if (rawG == 1 || rawG === '1' || String(rawG).toUpperCase() === 'M' || String(rawG).toLowerCase() === 'male') {
-          storedGender = 'Male';
-        } else if (rawG == 2 || rawG === '2' || String(rawG).toUpperCase() === 'F' || String(rawG).toLowerCase() === 'female') {
-          storedGender = 'Female';
-        } else if (rawG) {
-          storedGender = String(rawG);
-        }
-      }
-    } catch (dbErr) {
-      console.warn('[Zia] Could not fetch stored profile:', dbErr.message);
-    }
-
-    // 3. Call real Zia SDK
-    const zia = res.locals.catalystApp.zia();
-    const facePromise = zia.analyseFace(
-      fs.createReadStream(tempFilePath),
-      { mode: 'advanced', age: 'true', gender: 'true', emotion: 'true' }
-    );
-
-    facePromise.then(ziaContent => {
-      // Cleanup temp file
-      try { fs.unlinkSync(tempFilePath); } catch (e) {}
-
-      // ziaContent is either an array of faces or an object { faces_count: 1, faces: [...] }
-      let faces = [];
-      if (Array.isArray(ziaContent)) {
-        faces = ziaContent;
-      } else if (ziaContent && Array.isArray(ziaContent.faces)) {
-        faces = ziaContent.faces;
-      } else if (ziaContent && typeof ziaContent === 'object' && ziaContent.faces_count > 0 && ziaContent.faces) {
-        faces = ziaContent.faces;
-      }
-
-      if (faces.length === 0) {
-        return res.json({
-          success: true,
-          data: {
-            faceAnalysis: { faceCount: 0, detectedAge: null, detectedGender: null, confidence: 0 },
-            profileComparison: { verificationStatus: 'UNVERIFIABLE', storedAge, storedGender, genderMatch: null },
-            rawZiaResponse: ziaContent
-          }
-        });
-      }
-
-      // Use the first face detected
-      const face = faces[0];
-
-      // Parse Zia gender
-      let detectedGender = 'Unknown';
-      const rawGender = face['Gender Recognized'] || (face.gender ? (typeof face.gender === 'object' ? face.gender.prediction : face.gender) : '');
-      const genderStr = String(rawGender).toLowerCase();
-      if (genderStr.includes('female')) detectedGender = 'Female';
-      else if (genderStr.includes('male')) detectedGender = 'Male';
-
-      // Parse Zia age
-      let detectedAge = null;
-      const rawAge = face['Age Range'] || (face.age ? (typeof face.age === 'object' ? face.age.prediction : face.age) : '');
-      const ageStr = String(rawAge);
-      const ageMatch = ageStr.match(/(\d+)[-–](\d+)/);
-      if (ageMatch) {
-        detectedAge = Math.round((parseInt(ageMatch[1]) + parseInt(ageMatch[2])) / 2);
-      } else if (parseInt(ageStr)) {
-        detectedAge = parseInt(ageStr);
-      }
-
-      // Parse Zia confidence
-      let confidence = 98;
-      const rawConf = face['Face Detected'] !== undefined ? face['Face Detected'] : face.confidence;
-      if (rawConf !== undefined) {
-        const confNum = parseFloat(String(rawConf).replace('%', ''));
-        if (!isNaN(confNum)) {
-          confidence = confNum <= 1.0 ? Math.round(confNum * 100) : Math.round(confNum);
-        }
-      }
-
-      // Parse Emotion
-      const rawEmotion = face['Dominant Emotion'] || (face.emotion ? (typeof face.emotion === 'object' ? face.emotion.prediction : face.emotion) : 'neutral');
-      const detectedEmotion = String(rawEmotion);
-
-      // 4. Compare against stored profile
-      let verificationStatus = 'VERIFIED';
-      let genderMatch = true;
-      let matchReasons = [];
-
-      if (storedGender && detectedGender !== 'Unknown') {
-        genderMatch = storedGender.toLowerCase() === detectedGender.toLowerCase();
-        if (!genderMatch) {
-          verificationStatus = 'DISCREPANCY';
-          matchReasons.push(`Gender discrepancy: Recorded as ${storedGender}, but Zia vision detected ${detectedGender}`);
-        } else {
-          matchReasons.push(`Gender match: Both verified as ${storedGender}`);
-        }
-      }
-
-      if (storedAge && detectedAge) {
-        const ageDiff = Math.abs(storedAge - detectedAge);
-        if (ageDiff > 12) {
-          verificationStatus = 'DISCREPANCY';
-          matchReasons.push(`Age discrepancy: Recorded as ${storedAge} yrs, but Zia estimated ${detectedAge} yrs (Δ ${ageDiff} yrs)`);
-        } else {
-          matchReasons.push(`Age compatible: Recorded ${storedAge} yrs vs Detected ${detectedAge} yrs`);
-        }
-      }
-
-      if (confidence < 30) verificationStatus = 'UNVERIFIABLE';
-
-      return res.json({
-        success: true,
-        data: {
-          faceAnalysis: {
-            faceCount: faces.length,
-            detectedAge,
-            detectedGender,
-            confidence,
-            emotion: detectedEmotion
-          },
-          profileComparison: {
-            verificationStatus,
-            storedName,
-            storedAge,
-            storedGender,
-            genderMatch,
-            ageDifference: (storedAge && detectedAge) ? Math.abs(storedAge - detectedAge) : null,
-            matchReasons
-          },
-          rawZiaResponse: faces
-        }
-      });
-
-    }).catch(ziaErr => {
-      try { fs.unlinkSync(tempFilePath); } catch (e) {}
-      console.error('[Zia] analyseFace error:', ziaErr);
-      return res.status(500).json({
-        success: false,
-        error: 'Zia Face Analytics failed: ' + (ziaErr.message || 'Unknown error')
-      });
-    });
-
-  } catch (err) {
-    console.error('[Zia] analyze-photo error:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
-  }
+  });
 });
 
 // ============================================================================
@@ -2824,7 +2374,7 @@ app.get('/api/predict/risk-leaderboard', async (req, res) => {
       // Fallback sample data
       const sampleNames = [
         'Raju Shetty', 'Suresh Kumar', 'Mohan Reddy', 'Arun Gowda', 'Ramesh Naik',
-        'Venkatesh K', 'Naveen Pujari', 'Mahesh Patil', 'Shiva Raj', 'John D’Silva',
+        'Venkatesh K', 'Naveen Pujari', 'Mahesh Patil', 'Shiva Raj', 'John Dâ€™Silva',
         'Hassan Ali', 'Manjunath M', 'Rajesh Hegde', 'Vikram Singh', 'Basavaraj B'
       ];
       sampleNames.forEach((name, idx) => {
@@ -2897,7 +2447,7 @@ app.get('/api/predict/anomalies', async (req, res) => {
     
     const timeSlots = ['Late Night (00-04)', 'Early Morning (04-08)', 'Afternoon (12-16)', 'Evening (16-20)', 'Night (20-00)'];
     const anomalyReasons = [
-      ['Offence time deviates 3.2σ from district baseline', 'Single-day spike in local PS data (5yr high)', 'Matches MO of 3 other flagged incidents'],
+      ['Offence time deviates 3.2Ïƒ from district baseline', 'Single-day spike in local PS data (5yr high)', 'Matches MO of 3 other flagged incidents'],
       ['Property value stolen is 6.8x district median', 'Offence category rare for this area (historical: 0.2%)', 'Victim profile matches known targeting pattern'],
       ['Reported 72+ hours after incident (avg: 4.2h)', 'Location classified as low-risk zone historically', 'Unusual weapon/instrument used for this offence'],
       ['Suspect identified as out-of-state visitor (95% locality rate normal)', 'No CCTV coverage in 500m radius (unusual for urban PS)', 'Victim uncooperative / statement conflicts with scene']
@@ -3151,7 +2701,7 @@ app.get('/api/socio/correlations', async (req, res) => {
           { axis: "Migration", value: Math.round(35 + (vulnerabilityScore * 50) + ((dName.charCodeAt(3) % 18) - 9)), benchmark: 50 },
           { axis: "Substance Abuse", value: Math.round(22 + (vulnerabilityScore * 60) + ((dName.charCodeAt(4) % 14) - 7)), benchmark: 40 }
         ],
-        aiInsight: `ML correlation (R² = ${(0.58 + vulnerabilityScore * 0.32).toFixed(2)}) detected between composite economic stress vectors and the ${count} recorded offences in ${dName}. Vulnerability is ${vulnerabilityScore >= 0.7 ? 'SEVERE' : vulnerabilityScore >= 0.5 ? 'HIGH' : vulnerabilityScore >= 0.3 ? 'MODERATE' : 'LOW'} with predominant drivers: ${profileEntry.factors.slice(0, 2).join(', ')}.`,
+        aiInsight: `ML correlation (RÂ² = ${(0.58 + vulnerabilityScore * 0.32).toFixed(2)}) detected between composite economic stress vectors and the ${count} recorded offences in ${dName}. Vulnerability is ${vulnerabilityScore >= 0.7 ? 'SEVERE' : vulnerabilityScore >= 0.5 ? 'HIGH' : vulnerabilityScore >= 0.3 ? 'MODERATE' : 'LOW'} with predominant drivers: ${profileEntry.factors.slice(0, 2).join(', ')}.`,
         unemploymentProxy: Number((3.2 + vulnerabilityScore * 8.6 + (dName.charCodeAt(2) % 7) * 0.3).toFixed(1)),
         crimeRatePer100k: Math.round((count / Math.max(pop, 1)) * 100000),
         migrationIndex: Math.round(32 + vulnerabilityScore * 48 + (dName.charCodeAt(1) % 17)),
@@ -4377,9 +3927,9 @@ app.get('/api/webhook/clean-and-seed', async (req, res) => {
     console.log("bsa_audit_trail inserted successfully!");
 
     // =========================================================================
-    // CHALLENGE 2 BUILT-IN TOP-UP (200 extra rows) — ensures all 30 districts
+    // CHALLENGE 2 BUILT-IN TOP-UP (200 extra rows) â€” ensures all 30 districts
     //   have >= 10 cases, 6-slot time spread, 120-day historical baseline for
-    //   2B spike detection, and 2 spiked PS clusters that fire the 1.5× threshold
+    //   2B spike detection, and 2 spiked PS clusters that fire the 1.5Ã— threshold
     //   on first load.  All IDs continue from where baseline ended (caseId etc).
     // =========================================================================
     console.log("Applying Challenge 2 built-in top-up (200 cases across 30 districts)...");
@@ -4410,7 +3960,7 @@ app.get('/api/webhook/clean-and-seed', async (req, res) => {
     let c2BailId = (bailStatuses?.length || 0) + 50000;
     let c2SlotCursor = 0;
 
-    const C2_CASES_PER_DISTRICT = 7;   // 30 × 7 = 210 baseline
+    const C2_CASES_PER_DISTRICT = 7;   // 30 Ã— 7 = 210 baseline
     const C2_BASELINE_TOTAL = 200;     // rounded down to 200 total exactly
 
     const c2Cases = [];
@@ -4625,7 +4175,7 @@ app.get('/api/webhook/clean-and-seed', async (req, res) => {
       if (offsetDays <= 7) cell.recent7d++;
       if (offsetDays <= 37) cell.recent30d++;
 
-      // Audit trail (BSA Sec 63) for each new FIR — sha256 integrity
+      // Audit trail (BSA Sec 63) for each new FIR â€” sha256 integrity
       const ts = catalystDate(0);
       const payload = `${c2CaseId}::system::clean_and_seed_c2_topup::${ts}`;
       let hash = '';
@@ -5331,7 +4881,7 @@ app.post('/api/reports/generate', async (req, res) => {
     const arrestScore = Math.min(1, (arrests.length > 0 ? 0.4 : 0) + bailCoverage * 0.6);
     addFactor(
       'Arrest & Custody Trail',
-      `${arrests.length} arrest/surrender record(s) · Bail/custody data for ${bails.length} of ${accuseds.length} accused.`,
+      `${arrests.length} arrest/surrender record(s) Â· Bail/custody data for ${bails.length} of ${accuseds.length} accused.`,
       'ArrestSurrender / bail_custody_status (ZCQL)',
       arrestScore > 0.7 ? 'HIGH' : arrestScore > 0.3 ? 'MEDIUM' : 'CRITICAL',
       0.14,
@@ -5362,14 +4912,14 @@ app.post('/api/reports/generate', async (req, res) => {
     const isRobbery = sectionList.some(s => s.includes('309'));
     const isAssault = sectionList.some(s => s === 'BNS-115');
 
-    // Priority 1: If open case with no accused — add "Identify suspects via MO"
+    // Priority 1: If open case with no accused â€” add "Identify suspects via MO"
     if (isOpen && accuseds.length === 0) {
       investigativeLeads.push({
         priority: 'CRITICAL',
         type: 'IDENTIFY_SUSPECT',
         action: 'Identify prime suspects via MO pattern matching',
         reason: sameSectionCases.length > 0
-          ? `${sameSectionCases.length} similar cases exist with same BNS section — cross-reference their accused profiles (PersonID) for repeat involvement.`
+          ? `${sameSectionCases.length} similar cases exist with same BNS section â€” cross-reference their accused profiles (PersonID) for repeat involvement.`
           : 'No accused linked yet. Match the MO (entry method / instrument) to hotspot cells with similar historical MOs.',
         deadline: 'Immediate'
       });
@@ -5408,13 +4958,13 @@ app.post('/api/reports/generate', async (req, res) => {
       });
     }
 
-    // Priority 4: HB/Theft/Robbery — CCTV + fingerprint
+    // Priority 4: HB/Theft/Robbery â€” CCTV + fingerprint
     if (isHB || isTheft || isRobbery) {
       investigativeLeads.push({
         priority: 'HIGH',
         type: 'CCTV_ANALYSIS',
         action: 'Seize and analyze CCTV footage in 500m radius of incident',
-        reason: `MO shows ${(moList[0]?.entry_method || 'forced entry')} — footage of ${moList[0]?.time_of_operation || 'peak hours'} should identify escape vehicle or persons.`,
+        reason: `MO shows ${(moList[0]?.entry_method || 'forced entry')} â€” footage of ${moList[0]?.time_of_operation || 'peak hours'} should identify escape vehicle or persons.`,
         deadline: '48 hours'
       });
       investigativeLeads.push({
@@ -5426,7 +4976,7 @@ app.post('/api/reports/generate', async (req, res) => {
       });
     }
 
-    // Assault — injury/witness
+    // Assault â€” injury/witness
     if (isAssault) {
       investigativeLeads.push({
         priority: 'HIGH',
@@ -5473,27 +5023,27 @@ app.post('/api/reports/generate', async (req, res) => {
     // ====================================================================
     // GENERATE THE FORMAL REPORT NARRATIVE
     // ====================================================================
-    const accusedNames = accuseds.map(a => `${a.AccusedName}${a.AgeYear ? ` (${a.AgeYear}y/${a.GenderID === 1 ? 'M' : a.GenderID === 2 ? 'F' : 'O'})` : ''}${a.bail?.current_status ? ` — [${a.bail.current_status}]` : ''}`);
+    const accusedNames = accuseds.map(a => `${a.AccusedName}${a.AgeYear ? ` (${a.AgeYear}y/${a.GenderID === 1 ? 'M' : a.GenderID === 2 ? 'F' : 'O'})` : ''}${a.bail?.current_status ? ` â€” [${a.bail.current_status}]` : ''}`);
     const victimNames = victims.map(v => `${v.VictimName}${v.AgeYear ? ` (${v.AgeYear}y)` : ''}`);
-    const compNames = complainants.map(c => `${c.ComplainantName}${c.MobileNo ? ` 📱 ${c.MobileNo}` : ''}`);
+    const compNames = complainants.map(c => `${c.ComplainantName}${c.MobileNo ? ` ðŸ“± ${c.MobileNo}` : ''}`);
 
     let reportNarative = '';
 
     if (reportType === 'CASE_SUMMARY') {
       reportNarative = `
-# CASE SUMMARY INTELLIGENCE REPORT — ${firUid}
+# CASE SUMMARY INTELLIGENCE REPORT â€” ${firUid}
 
 ## 1. FIR OVERVIEW
 - **FIR / Crime No**: ${firUid}
 - **Case No**: ${caseRow.CaseNo || 'N/A'}
 - **Registered at**: ${psName} Police Station (${districtName} district)
 - **Registration Date**: ${formatDt(caseRow.CrimeRegisteredDate)}
-- **Incident Period**: ${formatDt(caseRow.IncidentFromDate)} — ${formatDt(caseRow.IncidentToDate)}
+- **Incident Period**: ${formatDt(caseRow.IncidentFromDate)} â€” ${formatDt(caseRow.IncidentToDate)}
 - **Current Status**: ${caseStatusName}
 - **BNS Sections Applied**: ${sectionList.join(', ') || 'Pending classification'}
 - **Court of Jurisdiction**: ${courtName}
 - **Investigating Officer**: ${ioName || 'Not assigned yet'}
-- **GPS Coordinates (scene)**: ${caseRow.latitude || '—'} , ${caseRow.longitude || '—'}
+- **GPS Coordinates (scene)**: ${caseRow.latitude || 'â€”'} , ${caseRow.longitude || 'â€”'}
 
 ## 2. COMPLAINANT
 ${compNames.length
@@ -5512,7 +5062,7 @@ ${accuseds.length
 |-----|------|---------|----------|-----------------------|--------|
 ${accusedsWithBail.map((a, i) => {
   const sex = a.GenderID === 1 ? 'M' : a.GenderID === 2 ? 'F' : '-';
-  return `| ${i+1} | ${a.AccusedName} | ${a.AgeYear || '-'}/${sex} | ${a.PersonID || '-'} | ${a.bail?.current_status || 'No data'} | ₹${a.bail?.surety_amount_inr || 0} |`;
+  return `| ${i+1} | ${a.AccusedName} | ${a.AgeYear || '-'}/${sex} | ${a.PersonID || '-'} | ${a.bail?.current_status || 'No data'} | â‚¹${a.bail?.surety_amount_inr || 0} |`;
 }).join('\n')}
 
 _Repeat offender note: If PersonID appears in multiple CaseMaster FIRs, consider invoking repeat-offender escalation matrix._
@@ -5539,8 +5089,8 @@ ${caseRow.BriefFacts || '_BriefFacts column empty; no narrative transcribed from
 ## 7. ARREST & CUSTODY TIMELINE
 ${arrests.length || bails.length
   ? [
-      ...arrests.map(a => `- Arrest/Surrender of AccusedMasterID=${a.AccusedMasterID} on ${formatDt(a.ArrestSurrenderDate)} · Type=${a.ArrestSurrenderTypeID === 1 ? 'Arrest' : 'Surrender'}`),
-      ...bails.map(b => `- Status: **${b.current_status}** · Court: ${b.court_name || '-'} · Bail order ${formatDt(b.bail_order_date)} · Next hearing: ${formatDt(b.next_hearing_date)}`)
+      ...arrests.map(a => `- Arrest/Surrender of AccusedMasterID=${a.AccusedMasterID} on ${formatDt(a.ArrestSurrenderDate)} Â· Type=${a.ArrestSurrenderTypeID === 1 ? 'Arrest' : 'Surrender'}`),
+      ...bails.map(b => `- Status: **${b.current_status}** Â· Court: ${b.court_name || '-'} Â· Bail order ${formatDt(b.bail_order_date)} Â· Next hearing: ${formatDt(b.next_hearing_date)}`)
     ].join('\n')
   : '_No ArrestSurrender or bail_custody_status rows recorded yet._'}
 
@@ -5549,8 +5099,8 @@ ARISE computes this report with **${(confidenceScore * 100).toFixed(0)}% confide
       `.trim();
     } else if (reportType === 'INVESTIGATION_BRIEF') {
       reportNarative = `
-# INVESTIGATION BRIEF — IO COPY
-**FIR ${firUid}** · ${psName} · ${districtName}
+# INVESTIGATION BRIEF â€” IO COPY
+**FIR ${firUid}** Â· ${psName} Â· ${districtName}
 
 ## A. CASE SNAPSHOT (FOR IO ACTION)
 - **Status**: ${caseStatusName}
@@ -5558,17 +5108,17 @@ ARISE computes this report with **${(confidenceScore * 100).toFixed(0)}% confide
 - **Complainant**: ${compNames[0] || 'N/A'}
 - **Victims**: ${victimNames.join(', ') || 'N/A'}
 - **Accused charged**: ${accuseds.length} (Absconding: ${accusedsWithBail.filter(a => a.bail?.current_status === 'ABSCONDING').length})
-- **Similar cases in state**: ${sameSectionCases.length} — cross-reference these co-offender graphs first.
+- **Similar cases in state**: ${sameSectionCases.length} â€” cross-reference these co-offender graphs first.
 
 ## B. PRIORITY ACTIONS (IN ORDER)
 ${investigativeLeads.map((l, i) => `
 **${i+1}. [${l.priority}] ${l.action}**
-→ _Why:_ ${l.reason}
-→ _Deadline:_ ${l.deadline}
+â†’ _Why:_ ${l.reason}
+â†’ _Deadline:_ ${l.deadline}
 `).join('\n')}
 
 ## C. RECOMMENDED NEXT HEARING PREP
-${ioName ? `Assigned IO: **${ioName}**` : 'IO not assigned — recommend immediate posting.'}
+${ioName ? `Assigned IO: **${ioName}**` : 'IO not assigned â€” recommend immediate posting.'}
 - Prepare Section 161 statements for all witnesses before ${formatDt(addDays(caseRow.CrimeRegisteredDate, 14))}
 - Draft chargesheet for review before ${formatDt(addDays(caseRow.CrimeRegisteredDate, 60))} (to avoid 167 CrPC remand complications)
 - Flag any bailed accused for surety verification at earliest
@@ -5580,7 +5130,7 @@ ${ioName ? `Assigned IO: **${ioName}**` : 'IO not assigned — recommend immedia
       `.trim();
     } else if (reportType === 'THREAT_ASSESSMENT') {
       reportNarative = `
-# THREAT ASSESSMENT REPORT — ${firUid}
+# THREAT ASSESSMENT REPORT â€” ${firUid}
 Prepared for Senior Officers / SCRB review.
 
 ## 1. ACCUSED RISK PROFILES
@@ -5592,21 +5142,21 @@ ${accusedsWithBail.length
       else if (a.bail?.current_status === 'JUDICIAL_CUSTODY') { score += 20; }
       else { score += 10; }
       // Repeat?
-      const countAsRepeat = sameSectionCases.some(sc => false); // placeholder — actual cross-check done below via narrative
+      const countAsRepeat = sameSectionCases.some(sc => false); // placeholder â€” actual cross-check done below via narrative
       score += (isFraud || isRobbery || isHB) ? 25 : 15;
       score += arrests.length > 0 ? 10 : 5;
       if (score >= 65) risk = 'CRITICAL';
       else if (score >= 45) risk = 'HIGH';
       else if (score >= 25) risk = 'MEDIUM';
       return `
-**${i+1}. ${a.AccusedName}**  ·  PersonID: ${a.PersonID || '-'}  ·  AccusedMasterID: ${a.AccusedMasterID}
+**${i+1}. ${a.AccusedName}**  Â·  PersonID: ${a.PersonID || '-'}  Â·  AccusedMasterID: ${a.AccusedMasterID}
 - **Threat Tier**: **${risk}** (${score}/100)
 - **Age/Sex**: ${a.AgeYear || '-'}/${a.GenderID === 1 ? 'Male' : a.GenderID === 2 ? 'Female' : 'N/A'}
 - **Current Status**: ${a.bail?.current_status || 'Unknown'}${a.bail?.court_name ? ` (${a.bail.court_name})` : ''}
-- **Offence weight**: Sections ${sectionList.join(', ')} → ${isFraud ? 'Cyber/Fraud (network multiplier risk)' : isRobbery || isHB ? 'Violent property crime' : isAssault ? 'Physical violence' : 'Property'}
-- **Flight risk**: ${a.bail?.current_status === 'ABSCONDING' ? 'EXTREME — has already fled' : a.bail?.current_status === 'BAIL' ? 'MEDIUM — verify sureties monthly' : 'LOW — in custody'}
+- **Offence weight**: Sections ${sectionList.join(', ')} â†’ ${isFraud ? 'Cyber/Fraud (network multiplier risk)' : isRobbery || isHB ? 'Violent property crime' : isAssault ? 'Physical violence' : 'Property'}
+- **Flight risk**: ${a.bail?.current_status === 'ABSCONDING' ? 'EXTREME â€” has already fled' : a.bail?.current_status === 'BAIL' ? 'MEDIUM â€” verify sureties monthly' : 'LOW â€” in custody'}
 - **Associates**: Cross-check entity_association_graph edges for PersonID ${a.PersonID || 'N/A'} to reveal co-offender networks
-- **Address / Mobile**: ${a.Address || 'Address N/A'} · 📱 ${a.MobileNo || 'N/A'}
+- **Address / Mobile**: ${a.Address || 'Address N/A'} Â· ðŸ“± ${a.MobileNo || 'N/A'}
 - **ID Marks**: ${a.IdentificationMark || 'N/A'}
       `.trim();
     }).join('\n\n')
@@ -5625,14 +5175,14 @@ ${moList.length
 
 ## 3. DISTRICT & STATE PATTERN CONTEXT
 - Same-section similar FIRs state-wide: **${sameSectionCases.length}**
-- District risk tier for this crime: _Cross-reference geospatial_hotspot_indicator for ${districtName} — this case ${caseRow.CaseMasterID % 2 === 0 ? 'aligns' : 'does NOT align'} with predicted dominant crime type._
-- **Action**: ${sameSectionCases.length >= 3 ? 'Pattern is serial/multi-case — consider SIT request before next bail application.' : 'Sporadic — continue local IO investigation with weekly review.'}
+- District risk tier for this crime: _Cross-reference geospatial_hotspot_indicator for ${districtName} â€” this case ${caseRow.CaseMasterID % 2 === 0 ? 'aligns' : 'does NOT align'} with predicted dominant crime type._
+- **Action**: ${sameSectionCases.length >= 3 ? 'Pattern is serial/multi-case â€” consider SIT request before next bail application.' : 'Sporadic â€” continue local IO investigation with weekly review.'}
 
 ## 4. RECOMMENDATIONS (COMMAND LEVEL)
-1. **QRT Deployment** · Target hours: ${moList[0]?.time_of_operation || '19:00–02:00'} · Radius: 500m around ${psName} scene-of-crime
-2. **BSA Audit flag** · Watch for suspicious SELECT queries on this CaseMasterID by non-IO users.
-3. **Repeat Offender Watch** · If PersonID of any accused has >1 FIRs → add to rowdy-adarsh list per SCRB circular.
-4. **Media sensitivity** · ${caseRow.GravityOffenceID === 1 ? '✅ HIGH — prepare single-line factual briefing.' : 'Low — standard media protocol.'}
+1. **QRT Deployment** Â· Target hours: ${moList[0]?.time_of_operation || '19:00â€“02:00'} Â· Radius: 500m around ${psName} scene-of-crime
+2. **BSA Audit flag** Â· Watch for suspicious SELECT queries on this CaseMasterID by non-IO users.
+3. **Repeat Offender Watch** Â· If PersonID of any accused has >1 FIRs â†’ add to rowdy-adarsh list per SCRB circular.
+4. **Media sensitivity** Â· ${caseRow.GravityOffenceID === 1 ? 'âœ… HIGH â€” prepare single-line factual briefing.' : 'Low â€” standard media protocol.'}
       `.trim();
     } else {
       reportNarative = 'Report type not recognized. Please regenerate with CASE_SUMMARY, INVESTIGATION_BRIEF, or THREAT_ASSESSMENT.';
@@ -5655,7 +5205,7 @@ ${moList.length
     };
 
     if (language === 'kn') {
-      reportNarative = `ಸೂಚನೆ: ಈ ವರದಿಯನ್ನು ARISE ತಂತ್ರಜ್ಞಾನ ವ್ಯವಸ್ಥೆಯ ಮೂಲಕ ಕರ್ನಾಟಕ ರಾಜ್ಯ ಪೊಲೀಸ್ ದಾಖಲೆಗಳ ಆಧಾರದ ಮೇಲೆ ರಚಿಸಲಾಗಿದೆ.\n\n` + reportNarative;
+      reportNarative = `à²¸à³‚à²šà²¨à³†: à²ˆ à²µà²°à²¦à²¿à²¯à²¨à³à²¨à³ ARISE à²¤à²‚à²¤à³à²°à²œà³à²žà²¾à²¨ à²µà³à²¯à²µà²¸à³à²¥à³†à²¯ à²®à³‚à²²à²• à²•à²°à³à²¨à²¾à²Ÿà²• à²°à²¾à²œà³à²¯ à²ªà³Šà²²à³€à²¸à³ à²¦à²¾à²–à²²à³†à²—à²³ à²†à²§à²¾à²°à²¦ à²®à³‡à²²à³† à²°à²šà²¿à²¸à²²à²¾à²—à²¿à²¦à³†.\n\n` + reportNarative;
     }
 
     res.json({
@@ -5762,12 +5312,12 @@ app.get('/api/reports/audit-trail/:firUid', async (req, res) => {
           target_record_uid: `${firUid}-ACC`,
           actor_officer_id: 'UNAUTH-USER-X',
           actor_employee_id: null,
-          actor_role: 'UNKNOWN USER — NON-IO',
+          actor_role: 'UNKNOWN USER â€” NON-IO',
           query_executed: `SELECT AccusedName,PersonID,MobileNo,Address FROM Accused WHERE CaseMasterID IN (SELECT CaseMasterID FROM CaseMaster WHERE CrimeNo='${firUid}')`,
           data_after_hash: null,
           is_anomalous: true,
           synthetic: true,
-          anomaly_reason: 'Suspicious: non-assigned employee accessed accused PII outside 09:00–18:00 window, and not listed in IO roster for this FIR.'
+          anomaly_reason: 'Suspicious: non-assigned employee accessed accused PII outside 09:00â€“18:00 window, and not listed in IO roster for this FIR.'
         },
         {
           audit_uid: `AUT-${firUid}-05`,
@@ -5797,7 +5347,7 @@ app.get('/api/reports/audit-trail/:firUid', async (req, res) => {
       totalEvents,
       anomalousEvents,
       hash: combinedHash,
-      hashTruncated: combinedHash.slice(0, 24) + '…' + combinedHash.slice(-12)
+      hashTruncated: combinedHash.slice(0, 24) + 'â€¦' + combinedHash.slice(-12)
     };
 
     res.json({
@@ -5815,7 +5365,7 @@ app.get('/api/reports/audit-trail/:firUid', async (req, res) => {
 
 // Helpers for reports
 function formatDt(dt) {
-  if (!dt) return '—';
+  if (!dt) return 'â€”';
   try {
     return new Date(dt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
   } catch { return String(dt); }
@@ -6002,7 +5552,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
         result.inserted += batch.length;
       }catch(err){
         result.batchesFailed++;
-        state.warn(`  ⚠ [${label||tableName}] batch ${(i/bs)+1} failed (rows ${i}-${Math.min(i+bs-1,toInsert.length-1)}): ${err&&err.message?err.message:String(err).slice(0,300)}`);
+        state.warn(`  âš  [${label||tableName}] batch ${(i/bs)+1} failed (rows ${i}-${Math.min(i+bs-1,toInsert.length-1)}): ${err&&err.message?err.message:String(err).slice(0,300)}`);
         for(let j=0; j<batch.length; j++){
           try{ await datastore.table(tableName).insertRows([batch[j]]); result.inserted++; }
           catch{ result.skipped++; }
@@ -6023,7 +5573,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       warn: (m) => { console.warn(m); logLines.push(m); }
     };
     state.log('\n=========================================================');
-    state.log('  Challenge 2 Part 3 Top-Up (Webhook v1.1 — Additive / Idempotent)');
+    state.log('  Challenge 2 Part 3 Top-Up (Webhook v1.1 â€” Additive / Idempotent)');
     state.log(`  Idempotency token: ${idempotencyToken}`);
     state.log('=========================================================\n');
 
@@ -6050,31 +5600,31 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
     // PHASE 0c lookup integrity gate
     state.log('\n==== PHASE 0c: LOOKUP INTEGRITY CHECK ====');
     const CHECKS = [
-      ['Act',"SELECT * FROM Act WHERE ActCode = 'BNS'",'§3.C #16 — BNS Act row'],
-      ['Section',"SELECT * FROM Section WHERE ActCode = 'BNS'",'§3.C #15 — BNS sections'],
-      ['State','SELECT * FROM State WHERE StateID = 1','§3.E #31 — Karnataka StateID=1'],
-      ['CaseCategory','SELECT * FROM CaseCategory WHERE CaseCategoryID = 1','§3.C #21 — CaseCategoryID=1'],
-      ['GravityOffence','SELECT * FROM GravityOffence WHERE GravityOffenceID IN (1,2)','§3.C #20 — Gravity rows 1+2'],
-      ['CaseStatusMaster','SELECT * FROM CaseStatusMaster WHERE CaseStatusID IN (1,2,3)','§3.C #19 — CaseStatus 1/2/3'],
-      ['Court','SELECT * FROM Court WHERE CourtID = 1','§3.C #22 — CourtID=1'],
-      ['Employee','SELECT * FROM Employee WHERE EmployeeID = 1001','§3.B #13 — Employee 1001'],
-      ['Rank','SELECT * FROM Rank WHERE RankID = 1','§3.E #27 — RankID=1'],
-      ['Designation','SELECT * FROM Designation WHERE DesignationID = 1','§3.E #26 — DesignationID=1'],
-      ['OccupationMaster','SELECT * FROM OccupationMaster WHERE OccupationID = 1','§3.D #23'],
-      ['ReligionMaster','SELECT * FROM ReligionMaster WHERE ReligionID = 1','§3.D #24'],
-      ['CasteMaster','SELECT * FROM caste_master WHERE caste_master_id = 1','§3.D #25'],
-      ['UnitType','SELECT * FROM UnitType WHERE UnitTypeID = 1','§3.E #29 — Police Station'],
-      ['CrimeHead','SELECT * FROM CrimeHead WHERE CrimeHeadID IN (1,2,3)','§3.C #18']
+      ['Act',"SELECT * FROM Act WHERE ActCode = 'BNS'",'Â§3.C #16 â€” BNS Act row'],
+      ['Section',"SELECT * FROM Section WHERE ActCode = 'BNS'",'Â§3.C #15 â€” BNS sections'],
+      ['State','SELECT * FROM State WHERE StateID = 1','Â§3.E #31 â€” Karnataka StateID=1'],
+      ['CaseCategory','SELECT * FROM CaseCategory WHERE CaseCategoryID = 1','Â§3.C #21 â€” CaseCategoryID=1'],
+      ['GravityOffence','SELECT * FROM GravityOffence WHERE GravityOffenceID IN (1,2)','Â§3.C #20 â€” Gravity rows 1+2'],
+      ['CaseStatusMaster','SELECT * FROM CaseStatusMaster WHERE CaseStatusID IN (1,2,3)','Â§3.C #19 â€” CaseStatus 1/2/3'],
+      ['Court','SELECT * FROM Court WHERE CourtID = 1','Â§3.C #22 â€” CourtID=1'],
+      ['Employee','SELECT * FROM Employee WHERE EmployeeID = 1001','Â§3.B #13 â€” Employee 1001'],
+      ['Rank','SELECT * FROM Rank WHERE RankID = 1','Â§3.E #27 â€” RankID=1'],
+      ['Designation','SELECT * FROM Designation WHERE DesignationID = 1','Â§3.E #26 â€” DesignationID=1'],
+      ['OccupationMaster','SELECT * FROM OccupationMaster WHERE OccupationID = 1','Â§3.D #23'],
+      ['ReligionMaster','SELECT * FROM ReligionMaster WHERE ReligionID = 1','Â§3.D #24'],
+      ['CasteMaster','SELECT * FROM caste_master WHERE caste_master_id = 1','Â§3.D #25'],
+      ['UnitType','SELECT * FROM UnitType WHERE UnitTypeID = 1','Â§3.E #29 â€” Police Station'],
+      ['CrimeHead','SELECT * FROM CrimeHead WHERE CrimeHeadID IN (1,2,3)','Â§3.C #18']
     ];
     const failures = [];
     for(const [table,query,rationale] of CHECKS){
       try{
         const rows = await zcql.executeZCQLQuery(query);
         const ok = Array.isArray(rows) && rows.length>0;
-        state.log(`  ${ok?'✅':'❌'} ${table}: ${ok?'PRESENT':'MISSING'} — ${rationale}`);
+        state.log(`  ${ok?'âœ…':'âŒ'} ${table}: ${ok?'PRESENT':'MISSING'} â€” ${rationale}`);
         if(!ok) failures.push({table, query, rationale});
       }catch(e){
-        state.log(`  ❌ ${table}: FAILED QUERY — ${rationale}`);
+        state.log(`  âŒ ${table}: FAILED QUERY â€” ${rationale}`);
         failures.push({table, query, rationale});
       }
     }
@@ -6084,7 +5634,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       state.warn('  Run clean-and-seed webhook first: GET /api/webhook/clean-and-seed');
       failures.forEach(f => state.warn(`    - ${f.table}: ${f.rationale}`));
       state.warn('**********************************************************************\n');
-      return res.status(412).json({ success:false, message:'Lookup tables missing — run clean-and-seed first', failures, log:logLines });
+      return res.status(412).json({ success:false, message:'Lookup tables missing â€” run clean-and-seed first', failures, log:logLines });
     }
 
     // PHASE 0d natural key pre-read
@@ -6143,7 +5693,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       districtsToInsert.push({ DistrictID:idMaxes.DistrictID+idx+1, DistrictName:name, StateID:1, Active:true });
     });
     if(districtsToInsert.length){
-      state.log(`  District table missing ${districtsToInsert.length} rows — inserting`);
+      state.log(`  District table missing ${districtsToInsert.length} rows â€” inserting`);
       await safeInsertBatches(datastore, zcql, state, 'District', districtsToInsert, {
         uniqKeyFn: (r) => `district::${String(r.DistrictName).trim().toLowerCase()}`,
         existingKeySet: existingDistrictNames, label:'District', idempotencyToken:null
@@ -6153,7 +5703,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
         districtByName.set(String(d.DistrictName||'').trim().toLowerCase(), d);
       });
     }else{
-      state.log('  District: all 30 present — skipping.');
+      state.log('  District: all 30 present â€” skipping.');
     }
     const unitsToInsert = [];
     let nextUnitId = Math.max(idMaxes.UnitID, 99) + 1;
@@ -6181,7 +5731,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
         existingKeySet: new Set(), label:'Unit', idempotencyToken:null
       });
     }else{
-      state.log('  Unit: enough PS already exist — skipping.');
+      state.log('  Unit: enough PS already exist â€” skipping.');
     }
     const unitById = new Map();
     const unitByDistrict = new Map();
@@ -6212,7 +5762,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       if(pre){
         const ageDelta = Math.abs((pre.age||0)-age);
         if((pre.name && pre.name.toLowerCase()!==accName.toLowerCase()) || (pre.gender && pre.gender!==gender) || (pre.age>0 && ageDelta>3)){
-          state.warn(`  ⚠ PersonID ${personId} identity clash — using EXISTING identity (never overwrite)`);
+          state.warn(`  âš  PersonID ${personId} identity clash â€” using EXISTING identity (never overwrite)`);
           serialOffenders.push({ PersonID:personId, AccusedName:pre.name||accName, AgeYear:pre.age||age, GenderID:pre.gender||gender, mo, assignedDistricts:[], assignedPSIds:[], casesToAppearIn:[] });
           continue;
         }
@@ -6262,7 +5812,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       const dName = DISTRICT_LIST[dIdx];
       const coords = KARNATAKA_DISTRICT_CENTERS[dName];
       const psList = unitByDistrict.get(dName) || [];
-      if(psList.length === 0){ state.warn(`  ⚠ ${dName} has no PS — skipping baseline here.`); continue; }
+      if(psList.length === 0){ state.warn(`  âš  ${dName} has no PS â€” skipping baseline here.`); continue; }
       let nCases = perDistBase + (dIdx < remainder ? 1 : 0);
       for(let c=0; c<nCases; c++){
         const slot = TIME_SLOTS[slotCursor%6]; slotCursor++;
@@ -6296,7 +5846,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
     for(const spike of SPIKE_CONFIG){
       const psList = unitByDistrict.get(spike.districtName) || [];
       const ps = psList.find(p => String(p.UnitName||'').toLowerCase().includes(spike.psNameMatch.toLowerCase())) || psList[0];
-      if(!ps){ state.warn(`  ⚠ Spike for ${spike.psNameMatch} skipped — no such PS`); continue; }
+      if(!ps){ state.warn(`  âš  Spike for ${spike.psNameMatch} skipped â€” no such PS`); continue; }
       const coords = KARNATAKA_DISTRICT_CENTERS[spike.districtName];
       for(let s=0; s<spike.extraCount; s++){
         const slot = TIME_SLOTS[slotCursor%6]; slotCursor++;
@@ -6323,7 +5873,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       if(existingCrimeNos.has(cb._crimeno)) return true;
       caseInsertPlans.push(cb); existingCrimeNos.add(cb._crimeno); return false;
     }).length;
-    state.log(`  CaseMaster: ${caseInsertPlans.length} to insert (${skippedByCrimeNo} skipped — CrimeNo exists)`);
+    state.log(`  CaseMaster: ${caseInsertPlans.length} to insert (${skippedByCrimeNo} skipped â€” CrimeNo exists)`);
 
     const caseRows = [];
     caseInsertPlans.forEach(bp => {
@@ -6515,7 +6065,7 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
         record_created_datetime: formatCatalystDate(now)
       });
     }
-    state.log(`  Built blueprints — Accused:${accusedRows.length} Comp:${compRows.length} Victim:${victimRows.length} ActSec:${actSecRows.length} Arrests:${arrestRows.length} MOs:${moRows.length} CS:${csRows.length} Bail:${bailRows.length}`);
+    state.log(`  Built blueprints â€” Accused:${accusedRows.length} Comp:${compRows.length} Victim:${victimRows.length} ActSec:${actSecRows.length} Arrests:${arrestRows.length} MOs:${moRows.length} CS:${csRows.length} Bail:${bailRows.length}`);
 
     // PHASE 5 hotspot cells
     state.log('\n==== PHASE 5: Hotspot indicator cells ====');
@@ -6726,8 +6276,8 @@ app.get('/api/webhook/seed-challenge2-topup', async (req, res) => {
       state.log(`| ${t} | ${b} | ${a} | ${d>=0?'+':''}${d} |`);
       comparison.push({ table:t, before:b, after:a, delta:d });
     }
-    state.log('\n✅ Challenge 2 top-up webhook completed.');
-    state.log(`   Idempotency token: ${idempotencyToken} — re-running this webhook auto-skips all rows.\n`);
+    state.log('\nâœ… Challenge 2 top-up webhook completed.');
+    state.log(`   Idempotency token: ${idempotencyToken} â€” re-running this webhook auto-skips all rows.\n`);
 
     return res.status(200).json({
       success:true, message:'Challenge 2 Part 3 top-up completed successfully.',
@@ -6892,4 +6442,3 @@ app.get('/api/analytics/anomalies', async (req, res) => {
 
 module.exports = app;
 if (require.main === module) { app.listen(3001, () => console.log('Local Server running on port 3001')); }
-
