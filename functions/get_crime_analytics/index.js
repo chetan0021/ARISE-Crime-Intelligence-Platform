@@ -1445,44 +1445,24 @@ app.post('/api/chatbot/query', async (req, res) => {
       let reasoning = '';
 
       try {
-        const SYSTEM_PROMPT = `You are Zia, an AI assistant for ARISE police intelligence platform.
-
-OUTPUT FORMAT - CRITICAL INSTRUCTION:
-Your response will be read DIRECTLY to police officers via text-to-speech. DO NOT include ANY thinking process, reasoning steps, or analysis workflow in your response.
-
-BANNED PATTERNS (will cause immediate failure):
-❌ "Let me analyze the request"
-❌ "The user is asking"
-❌ "Scan the database"
-❌ "Step 1:", "Step 2:", or numbered thinking steps
-❌ "Analyze the Request:", "Reasoning:", "Thinking:", "Observation:"
-❌ "I need to check", "Let me verify", "Let's look at"
-❌ "Okay, so first", "Now I will"
-
-✅ CORRECT RESPONSE FORMAT:
-Start with the direct answer immediately. Example:
-
-User: "Show recent FIRs in Bengaluru Urban"
-WRONG: "Analyze the Request: User wants to see recent FIRs in Bengaluru Urban district..."
-RIGHT: "Here are the 5 most recent FIRs in Bengaluru Urban district:
-
-1. **Case 2026001091** - Theft of gold ornaments from BM road service lane (July 26, 11:38 PM)
-2. **Case 2026SP001323** - Laptop bag theft at Jayanagar 4th Block worth ₹4.32 lakhs (July 26, 10:38 PM)
-..."
-
+        const SYSTEM_PROMPT = `You are Zia, the AI system assistant for ARISE.
 LANGUAGE RULE:
-- Respond in the same language as the user query (English or Kannada)
-- Never mix languages
+- If user speaks Kannada, respond in natural spoken Kannada.
+- If user speaks English, respond in English.
+- NEVER mix the languages.
 
-ASSISTANT BEHAVIOR:
-1. Be concise and professional like a senior intelligence analyst
-2. Use markdown formatting for tables and lists when appropriate
-3. Cite specific case numbers, dates, and locations from the database context
-4. If an offender name is not in the database, say: "This name is not in the database. Is this a new criminal? Book an FIR via CCTNS and it will sync to ARISE automatically."
+ASSISTANT RULES:
+1. You may use markdown for formatting. If the user asks for tables, generate beautiful markdown tables. If they ask for structured documents, use headers and bullet points.
+2. Be highly analytical. You have deep knowledge of all ZCQL tables: CaseMaster, Unit, District, CaseStatusMaster, Accused, Victim, ComplainantDetails, ActSectionAssociation, geospatial_hotspot_indicator, modus_operandi_signature, bail_custody_status. You can suggest how to join these tables or what insights they provide.
+3. You are aware that the user is currently viewing the page: "${pageContext}". Suggest context-aware analytics based on the screen they are on.
+4. DO NOT over-explain or constantly re-introduce yourself. Keep it analytical and direct.
 
-CURRENT PAGE CONTEXT: ${pageContext}
+OFFENDER PROTOCOL (CRITICAL):
+If the user asks about an offender/person by name, check if that name exists in the database.
+If the name DOES NOT exist in the database, you MUST reply exactly with the following sentiment (in the requested language):
+"This name is not available in the database. Is this a new criminal? You can explain about him to me, and I suggest you book an FIR on him. Once you update it in CCTNS, it will automatically reflect in ARISE."
 
-DATABASE CONTEXT (use this data to answer questions):
+DATABASE CONTEXT:
 ${JSON.stringify(context, null, 2)}
 `;
 
@@ -1544,7 +1524,8 @@ ${JSON.stringify(context, null, 2)}
             messages: glmMessages,
             max_tokens: 500,
             temperature: 0.7,
-            stream: false
+            stream: false,
+            chat_template_kwargs: { enable_thinking: false }
           })
         };
         if (authToken) {
@@ -1563,24 +1544,30 @@ ${JSON.stringify(context, null, 2)}
             finalResponse = String(glmResult.response).trim();
           }
           if (finalResponse) {
-            // Always apply thinking-stripping — defense in depth against
-            // chain-of-thought leakage regardless of how the model responded.
-            const beforeLen = finalResponse.length;
-            finalResponse = stripLLMThinking(finalResponse);
-            const afterLen = finalResponse.length;
-            if (beforeLen !== afterLen) {
-              const pct = beforeLen > 0 ? Math.round((1 - afterLen / beforeLen) * 100) : 0;
-              console.log("[stripLLMThinking] stripped " + beforeLen + " bytes → " + afterLen + " bytes (" + pct + "% reduction)");
+            // Simple thinking pattern filter (from working version)
+            const thinkingPatterns = /^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|Let me analyze|Analyze the Request|Scan the Database|Item \d+:|User:|Role:|Constraint:)/i;
+            if (thinkingPatterns.test(finalResponse)) {
+              const lines = finalResponse.split('\n').filter(l => {
+                const trimmed = l.trim();
+                return trimmed && 
+                       !trimmed.match(/^(\d+\.\s+\*\*|\*\*Analyze|\*\*Formulate|\*\*Check|\*\*Role|\*\*Constraint|\*\*Security|\*\*Identity|\*\*Purpose|Item \d+:|User:|Language:|Scan|Analyze the Request|The user)/) && 
+                       !trimmed.startsWith('*') &&
+                       !trimmed.match(/^\(Wait,/) &&
+                       !trimmed.match(/^\(This fits/) &&
+                       !trimmed.match(/^I need to/) &&
+                       !trimmed.match(/^Let me/);
+              });
+              if (lines.length > 0) finalResponse = lines.join(' ').trim();
             }
           }
           if (!finalResponse) finalResponse = "I need a moment to process. Could you repeat?";
         } else {
           const errText = await response.text();
-          throw new Error(`GLM Error: HTTP ${response.status} - ${errText} | TokenErr: ${tokenErrorStr}`);
+          throw new Error(`GLM Error: HTTP ${response.status} - ${errText}`);
         }
       } catch (llmError) {
         usedLLM = false;
-        reasoning = `LLM Call Failed: ${llmError.message} | EnvVars(CID: ${!!process.env.ZOHO_CLIENT_ID}, CSEC: ${!!process.env.ZOHO_CLIENT_SECRET}, REF: ${!!process.env.ZOHO_REFRESH_TOKEN})`;
+        reasoning = `LLM Call Failed: ${llmError.message}`;
         finalResponse = generateZiaIntelligenceResponse(userMessage, context, pageContext);
       }
 
